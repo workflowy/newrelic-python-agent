@@ -85,7 +85,9 @@ class NewRelicPluginAgent(helper.Controller):
         :rtype: str
 
         """
-        licensekey = os.getenv('NEWRELIC_LICENSE_KEY', self.config.application.license_key)
+        licensekey = os.getenv('NEWRELIC_LICENSE_KEY')
+        if licensekey==None:
+            licensekey = self.config.application.license_key
         return licensekey
 
     def poll_plugin(self, plugin_name, plugin, config):
