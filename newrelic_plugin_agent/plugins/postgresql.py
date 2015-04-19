@@ -90,7 +90,10 @@ class PostgreSQL(base.Plugin):
             self.add_index_stats(cursor)
             self.add_statio_stats(cursor)
             self.add_table_stats(cursor)
-        self.add_replication_stats(cursor)
+        try:
+            self.add_replication_stats(cursor)
+        except:
+            LOGGER.exception("error retrieving replication status")
         self.add_transaction_stats(cursor)
 
         # add_wal_metrics needs superuser to get directory listings
