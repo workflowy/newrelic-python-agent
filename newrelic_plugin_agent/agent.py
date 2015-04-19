@@ -85,7 +85,8 @@ class NewRelicPluginAgent(helper.Controller):
         :rtype: str
 
         """
-        return self.config.application.license_key
+        licensekey = os.getenv('NEWRELIC_LICENSE_KEY', self.config.application.license_key)
+        return licensekey
 
     def poll_plugin(self, plugin_name, plugin, config):
         """Kick off a background thread to run the processing task.
