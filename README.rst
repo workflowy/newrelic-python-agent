@@ -38,11 +38,23 @@ Installation Instructions
 
 * See ``pip`` installation instructions at http://www.pip-installer.org/en/latest/installing.html
 
-2. Copy the configuration file example from ``/opt/newrelic-plugin-agent/newrelic-plugin-agent.cfg`` to ``/etc/newrelic/newrelic-plugin-agent.cfg`` and edit the configuration in that file.
+2. Copy the configuration file example from ``/opt/newrelic-plugin-agent/newrelic-plugin-agent.cfg`` to ``/etc/newrelic/newrelic-plugin-agent.cfg`` and edit the configuration in that file:
 
-3. Make a ``/var/log/newrelic`` directory and make sure it is writable by the user specified in the configuration file
+::
 
-4. Make a ``/var/run/newrelic`` directory and make sure it is writable by the user specified in the configuration file
+    $ NRCFGFILE=/etc/newrelic/newrelic-plugin-agent.cfg; if [[ ! -f "$NRCFGFILE" ]] ; then cp /opt/newrelic-plugin-agent/newrelic-plugin-agent.cfg $NRCFGFILE; fi
+
+3. Make a ``/var/log/newrelic`` directory and make sure it is writable by the ``root`` user:
+
+::
+
+    $ NRLOGDIR=/var/log/newrelic; if [ ! -d "$NRLOGDIR" ]; then mkdir $NRLOGDIR && chown -R root:root $NRLOGDIR && chmod -R 755 $NRLOGDIR; fi
+
+4. Make a ``/var/run/newrelic`` directory and make sure it is writable by the ``newrelic`` user:
+
+::
+
+    $ NRRUNDIR=/var/run/newrelic; if [ ! -d "$NRRUNDIR" ]; then mkdir $NRRUNDIR && chown -R newrelic:newrelic $NRRUNDIR && chmod -R 755 $NRRUNDIR; fi
 
 5. Run the app:
 
