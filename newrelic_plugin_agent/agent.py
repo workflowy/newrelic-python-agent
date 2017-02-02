@@ -13,6 +13,8 @@ import sys
 import Queue as queue
 import threading
 import time
+import StringIO
+import gzip
 
 from newrelic_plugin_agent import __version__
 from newrelic_plugin_agent import plugins
@@ -42,6 +44,7 @@ class NewRelicPluginAgent(helper.Controller):
         self.derive_last_interval = dict()
         self.endpoint = self.PLATFORM_URL
         self.http_headers = {'Accept': 'application/json',
+                             'Content-Encoding': 'gzip',
                              'Content-Type': 'application/json'}
         self.last_interval_start = None
         self.min_max_values = dict()
@@ -220,11 +223,22 @@ class NewRelicPluginAgent(helper.Controller):
         LOGGER.info('Sending %i metrics to NewRelic', metrics)
         body = {'agent': self.agent_data, 'components': components}
         LOGGER.debug(body)
+
+        s = StringIO.StringIO()
+        g = gzip.GzipFile(fileobj=s, mode='w')
+        g.write(json.dumps(body, ensure_ascii=False))
+        g.close()
+        gzipped_body = s.getvalue()
+        request_body = gzipped_body
+
+	LOGGER.debug('POST data size before compression: %i bytes', len(json.dumps(body, ensure_ascii=False)))
+        LOGGER.debug('POST data size after compression: %i bytes', len(request_body))
+
         try:
             response = requests.post(self.endpoint,
                                      headers=self.http_headers,
                                      proxies=self.proxies,
-                                     data=json.dumps(body, ensure_ascii=False),
+                                     data=request_body,
                                      timeout=self.config.get('newrelic_api_timeout', 10),
                                      verify=self.config.get('verify_ssl_cert',
                                                             True))
