@@ -15,7 +15,7 @@ ADD bin/apache2.sh /etc/service/apache2/run
 ADD bin/memcached.sh /etc/service/memcached/run
 ADD bin/mysqld.sh /etc/service/mysqld/run
 
-ADD newrelic-plugin-agent.cfg /etc/newrelic/newrelic-plugin-agent.cfg
+ADD newrelic-python-agent.cfg /etc/newrelic/newrelic-python-agent.cfg
 
 ENV APACHE_RUN_USER www-data
 ENV APACHE_RUN_GROUP www-data

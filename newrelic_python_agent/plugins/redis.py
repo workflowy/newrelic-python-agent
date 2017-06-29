@@ -4,7 +4,7 @@ Redis plugin polls Redis for stats
 """
 import logging
 
-from newrelic_plugin_agent.plugins import base
+from newrelic_python_agent.plugins import base
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class Redis(base.SocketStatsPlugin):
 
         self.add_gauge_value('Memory Use', 'bytes',
                              stats.get('used_memory', 0),
-                             max_val=stats.get('used_memory_peak', 0 ))
+                             max_val=stats.get('used_memory_peak', 0))
         self.add_gauge_value('Memory Fragmentation', 'ratio',
                              stats.get('mem_fragmentation_ratio', 0))
 
@@ -92,7 +92,7 @@ class Redis(base.SocketStatsPlugin):
 
             db_stats = stats.get('db%i' % db, dict())
             self.add_gauge_value('DB/%s/Expires' % db, 'keys',
-                                db_stats.get('expires', 0))
+                                 db_stats.get('expires', 0))
             self.add_gauge_value('DB/%s/Keys' % db, 'keys',
                                  db_stats.get('keys', 0))
             keys += db_stats.get('keys', 0)
@@ -145,7 +145,7 @@ class Redis(base.SocketStatsPlugin):
         values = dict()
         for line in lines:
             if ':' in line:
-                key, value = line.strip().split(':')
+                key, value = line.strip().split(':', 1)
                 if key[:2] == 'db':
                     values[key] = dict()
                     subvalues = value.split(',')
