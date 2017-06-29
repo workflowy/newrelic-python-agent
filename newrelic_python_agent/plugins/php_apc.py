@@ -4,7 +4,7 @@ PHP APC Support
 """
 import logging
 
-from newrelic_plugin_agent.plugins import base
+from newrelic_python_agent.plugins import base
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,4 +92,4 @@ class APC(base.JSONStatsPlugin):
         self.add_derive_value('User Cache/Misses', 'keys', misses)
         self.add_derive_value('User Cache/Inserts', 'keys',
                               user_stats.get('ninserts',
-                                             user_stats.get('num_inserts',0)))
+                                             user_stats.get('num_inserts', 0)))

@@ -1,4 +1,4 @@
-NewRelic Plugin Agent
+NewRelic Python Agent
 =====================
 
 An agent that polls supported backend systems and submits the results to the
@@ -34,11 +34,11 @@ Installation Instructions
 
 ::
 
-    $ pip install newrelic-plugin-agent
+    $ pip install newrelic-python-agent
 
 * See ``pip`` installation instructions at http://www.pip-installer.org/en/latest/installing.html
 
-2. Copy the configuration file example from ``/opt/newrelic-plugin-agent/newrelic-plugin-agent.cfg`` to ``/etc/newrelic/newrelic-plugin-agent.cfg`` and edit the configuration in that file:
+2. Copy the configuration file example from ``/opt/newrelic-python-agent/newrelic-python-agent.cfg`` to ``/etc/newrelic/newrelic-python-agent.cfg`` and edit the configuration in that file.
 
 ::
 
@@ -60,11 +60,11 @@ Installation Instructions
 
 ::
 
-    $ newrelic-plugin-agent -c PATH-TO-CONF-FILE [-f]
+    $ newrelic-python-agent -c PATH-TO-CONF-FILE [-f]
 
 Where ``-f`` is to run it in the foreground instead of as a daemon.
 
-Sample configuration and init.d scripts are installed to ``/opt/newrelic-plugin-agent`` in addition to a PHP script required for APC monitoring.
+Sample configuration and init.d scripts are installed to ``/opt/newrelic-python-agent`` in addition to a PHP script required for APC monitoring.
 
 Installing Additional Requirements
 ----------------------------------
@@ -74,15 +74,15 @@ this, make sure you have the latest version of ``pip`` installed (http://www.pip
 
 ::
 
-    $ pip install newrelic-plugin-agent[mongodb]
+    $ pip install newrelic-python-agent[mongodb]
 
 or::
 
-    $ pip install newrelic-plugin-agent[pgbouncer]
+    $ pip install newrelic-python-agent[pgbouncer]
 
 or::
 
-    $ pip install newrelic-plugin-agent[postgresql]
+    $ pip install newrelic-python-agent[postgresql]
 
 If this does not work for you, make sure you are running a recent copy of ``pip`` (>= 1.3).
 
@@ -122,7 +122,7 @@ The fields for plugin configurations can vary due to a plugin's configuration re
 
 APC Installation Notes
 ----------------------
-Copy the ``apc-nrp.php`` script to a directory that can be served by your web server or ``php-fpm`` application. Edit the ``newrelic-plugin-agent`` configuration to point to the appropriate URL.
+Copy the ``apc-nrp.php`` script to a directory that can be served by your web server or ``php-fpm`` application. Edit the ``newrelic-python-agent`` configuration to point to the appropriate URL.
 
 Apache HTTPd Installation Notes
 -------------------------------
@@ -266,7 +266,7 @@ UWSGI Installation Notes
 ------------------------
 The UWSGI plugin can communicate either over UNIX domain sockets using the path configuration variable or TCP/IP using the host and port variables. Do not include both.
 
-Make sure you have `enabled stats server 
+Make sure you have `enabled stats server
 <http://uwsgi-docs.readthedocs.org/en/latest/StatsServer.html>`_ in your uwsgi config.
 
 Configuration Example
@@ -421,7 +421,7 @@ Configuration Example
 
     Daemon:
       user: newrelic
-      pidfile: /var/run/newrelic/newrelic-plugin-agent.pid
+      pidfile: /var/run/newrelic/newrelic-python-agent.pid
 
     Logging:
       formatters:
@@ -431,11 +431,11 @@ Configuration Example
         file:
           class : logging.handlers.RotatingFileHandler
           formatter: verbose
-          filename: /var/log/newrelic/newrelic-plugin-agent.log
+          filename: /var/log/newrelic/newrelic-python-agent.log
           maxBytes: 10485760
           backupCount: 3
       loggers:
-        newrelic-plugin-agent:
+        newrelic-python-agent:
           level: INFO
           propagate: True
           handlers: [console, file]
@@ -446,14 +446,14 @@ Configuration Example
 
 Troubleshooting
 ---------------
-- If the installation does not install the ``newrelic-plugin-agent`` application in ``/usr/bin`` then it is likely that ``setuptools`` or ``distribute`` is not up to date. The following commands can be run to install ``distribute`` and ``pip`` for installing the application:
+- If the installation does not install the ``newrelic-python-agent`` application in ``/usr/bin`` then it is likely that ``setuptools`` or ``distribute`` is not up to date. The following commands can be run to install ``distribute`` and ``pip`` for installing the application:
 
 ::
 
     $ curl http://python-distribute.org/distribute_setup.py | python
     $ curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | python
 
-- If the application installs but doesn't seem to be submitting status, check the logfile which at ``/tmp/newrelic-plugin-agent.log`` if the default example logging configuration is used.
+- If the application installs but doesn't seem to be submitting status, check the logfile which at ``/tmp/newrelic-python-agent.log`` if the default example logging configuration is used.
 - If the agent starts but dies shortly after ensure that ``/var/log/newrelic`` and ``/var/run/newrelic`` are writable by the same user specified in the daemon section of the configuration file.
 - If the agent has died and won't restart, remove any files found in ``/var/run/newrelic/``
 - If using the Apache HTTP plugin and your stats are blank, ensure the ExtendedStatus directive is on.

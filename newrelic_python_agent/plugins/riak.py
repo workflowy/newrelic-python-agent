@@ -4,7 +4,7 @@ Riak Plugin
 """
 import logging
 
-from newrelic_plugin_agent.plugins import base
+from newrelic_python_agent.plugins import base
 
 LOGGER = logging.getLogger(__name__)
 
@@ -142,7 +142,6 @@ class Riak(base.JSONStatsPlugin):
                               stats.get('node_puts_total', 0))
         self.add_derive_value('Requests/Redirected', 'requests',
                               stats.get('coord_redirs_total', 0))
-
 
         self.add_gauge_value('Ring/Members', 'members',
                              len(stats.get('ring_members', list())))
