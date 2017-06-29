@@ -16,8 +16,8 @@ import time
 import StringIO
 import gzip
 
-from newrelic_plugin_agent import __version__
-from newrelic_plugin_agent import plugins
+from newrelic_python_agent import __version__
+from newrelic_python_agent import plugins
 
 LOGGER = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class NewRelicPluginAgent(helper.Controller):
     def poll_plugin(self, plugin_name, plugin, config):
         """Kick off a background thread to run the processing task.
 
-        :param newrelic_plugin_agent.plugins.base.Plugin plugin: The plugin
+        :param newrelic_python_agent.plugins.base.Plugin plugin: The plugin
         :param dict config: The config for the plugin
 
         """
@@ -152,8 +152,10 @@ class NewRelicPluginAgent(helper.Controller):
             self.min_max_values[guid][name] = dict()
 
         for metric in component['metrics']:
-            min_val, max_val = self.min_max_values[guid][name].get(metric,
-                                                                   (None, None))
+            min_val, max_val = self.min_max_values[guid][name].get(
+                    metric,
+                    (None, None)
+            )
             value = component['metrics'][metric]['total']
             if min_val is not None and min_val > value:
                 min_val = value
@@ -231,7 +233,7 @@ class NewRelicPluginAgent(helper.Controller):
         gzipped_body = s.getvalue()
         request_body = gzipped_body
 
-	LOGGER.debug('POST data size before compression: %i bytes', len(json.dumps(body, ensure_ascii=False)))
+        LOGGER.debug('POST data size before compression: %i bytes', len(json.dumps(body, ensure_ascii=False)))
         LOGGER.debug('POST data size after compression: %i bytes', len(request_body))
 
         try:
@@ -242,6 +244,7 @@ class NewRelicPluginAgent(helper.Controller):
                                      timeout=self.config.get('newrelic_api_timeout', 10),
                                      verify=self.config.get('verify_ssl_cert',
                                                             True))
+
             LOGGER.debug('Response: %s: %r',
                          response.status_code,
                          response.content.strip())
@@ -311,7 +314,7 @@ class NewRelicPluginAgent(helper.Controller):
         used to maintain the stack of running plugins.
 
         :param str name: The name of the plugin
-        :param newrelic_plugin_agent.plugin.Plugin plugin: The plugin class
+        :param newrelic_python_agent.plugin.Plugin plugin: The plugin class
         :param dict config: The plugin configuration
         :param int poll_interval: How often the plugin is invoked
 
@@ -338,7 +341,7 @@ def main():
     helper.parser.description('The NewRelic Plugin Agent polls various '
                               'services and sends the data to the NewRelic '
                               'Platform')
-    helper.parser.name('newrelic_plugin_agent')
+    helper.parser.name('newrelic_python_agent')
     argparse = helper.parser.get()
     argparse.add_argument('-C',
                           action='store_true',
