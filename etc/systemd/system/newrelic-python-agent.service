@@ -1,5 +1,5 @@
 [Unit]
-Description=newrelic-plugin-agent
+Description=newrelic-python-agent
 
 [Service]
 Type=forking
@@ -7,11 +7,11 @@ PrivateTmp=yes
 User=newrelic
 Group=newrelic
 PermissionsStartOnly=true
-PIDFile=/var/run/newrelic/newrelic-plugin-agent.pid
+PIDFile=/var/run/newrelic/newrelic-python-agent.pid
 ExecStartPre=/bin/mkdir -p /var/run/newrelic
-ExecStartPre=/bin/rm -f /var/run/newrelic/newrelic-plugin-agent.pid
+ExecStartPre=/bin/rm -f /var/run/newrelic/newrelic-python-agent.pid
 ExecStartPre=/bin/chown -R newrelic:newrelic /var/run/newrelic
-ExecStart=/usr/bin/newrelic-plugin-agent -c /etc/newrelic/newrelic-plugin-agent.cfg
+ExecStart=/usr/bin/newrelic-python-agent -c /etc/newrelic/newrelic-python-agent.cfg
 ExecStop=/bin/kill -INT $MAINPID
 Restart=on-abort
 

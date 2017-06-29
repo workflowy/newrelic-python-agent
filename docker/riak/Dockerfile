@@ -35,8 +35,8 @@ RUN sed -i.bak 's/127.0.0.1/0.0.0.0/' /etc/riak/app.config && \
 RUN mkdir /etc/service/riak
 ADD bin/riak.sh /etc/service/riak/run
 
-ADD bin/newrelic-plugin-agent.sh /etc/service/newrelic-plugin-agent/run
-ADD newrelic-plugin-agent.cfg /etc/newrelic/newrelic-plugin-agent.cfg
+ADD bin/newrelic-python-agent.sh /etc/service/newrelic-python-agent/run
+ADD newrelic-python-agent.cfg /etc/newrelic/newrelic-python-agent.cfg
 
 RUN git clone https://github.com/basho/basho_bench.git /opt/basho_bench
 RUN cd /opt/basho_bench && make all

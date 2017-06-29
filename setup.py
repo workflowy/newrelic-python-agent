@@ -2,16 +2,16 @@ import os
 from setuptools import setup
 import sys
 
-base_path = '%s/opt/newrelic-plugin-agent' % os.getenv('VIRTUAL_ENV', '')
+base_path = '%s/opt/newrelic-python-agent' % os.getenv('VIRTUAL_ENV', '')
 data_files = dict()
 data_files[base_path] = ['LICENSE',
                          'README.rst',
-                         'etc/init.d/newrelic-plugin-agent.deb',
-                         'etc/init.d/newrelic-plugin-agent.rhel',
-                         'etc/newrelic/newrelic-plugin-agent.cfg',
+                         'etc/init.d/newrelic-python-agent.deb',
+                         'etc/init.d/newrelic-python-agent.rhel',
+                         'etc/newrelic/newrelic-python-agent.cfg',
                          'apc-nrp.php']
 
-console_scripts = ['newrelic-plugin-agent=newrelic_plugin_agent.agent:main']
+console_scripts = ['newrelic-python-agent=newrelic_python_agent.agent:main']
 install_requires = ['helper>=2.2.2', 'requests>=2.0.0']
 tests_require = []
 extras_require = {'mongodb': ['pymongo'],
@@ -21,11 +21,11 @@ extras_require = {'mongodb': ['pymongo'],
 if sys.version_info < (2, 7, 0):
     install_requires.append('importlib')
 
-setup(name='newrelic_plugin_agent',
+setup(name='newrelic_python_agent',
       version='1.3.0',
       description='Python based agent for collecting metrics for NewRelic',
-      url='https://github.com/MeetMe/newrelic-plugin-agent',
-      packages=['newrelic_plugin_agent', 'newrelic_plugin_agent.plugins'],
+      url='https://github.com/MeetMe/newrelic-python-agent',
+      packages=['newrelic_python_agent', 'newrelic_python_agent.plugins'],
       author='Gavin M. Roy',
       author_email='gavinmroy@gmail.com',
       license='BSD',

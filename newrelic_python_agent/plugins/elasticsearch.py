@@ -5,7 +5,7 @@ Elastic Search
 import logging
 import requests
 
-from newrelic_plugin_agent.plugins import base
+from newrelic_python_agent.plugins import base
 
 LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class ElasticSearch(base.JSONStatsPlugin):
 
         get_stats = indices.get('get', dict())
         self.add_derive_value('Indices/Get', 'count',
-                             get_stats.get('total', 0))
+                              get_stats.get('total', 0))
         self.add_derive_value('Indices/Get', 'ms',
                               get_stats.get('time_in_millis', 0))
         self.add_derive_value('Indices/Get Hits', 'count',
@@ -117,14 +117,14 @@ class ElasticSearch(base.JSONStatsPlugin):
 
         search = indices.get('search', dict())
         self.add_gauge_value('Indices/Open Search Contexts', 'count',
-                             search.get('open_contexts', 0))
+                              search.get('open_contexts', 0))
         self.add_derive_value('Indices/Search Query', 'count',
-                             search.get('query_total', 0))
+                              search.get('query_total', 0))
         self.add_derive_value('Indices/Search Query', 'ms',
                               search.get('query_time_in_millis', 0))
 
         self.add_derive_value('Indices/Search Fetch', 'count',
-                             search.get('fetch_total', 0))
+                              search.get('fetch_total', 0))
         self.add_derive_value('Indices/Search Fetch', 'ms',
                               search.get('fetch_time_in_millis', 0))
 
