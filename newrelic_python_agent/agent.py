@@ -149,8 +149,10 @@ class NewRelicPluginAgent(helper.Controller):
             self.min_max_values[guid][name] = dict()
 
         for metric in component['metrics']:
-            min_val, max_val = self.min_max_values[guid][name].get(metric,
-                                                                   (None, None))
+            min_val, max_val = self.min_max_values[guid][name].get(
+                    metric,
+                    (None, None)
+            )
             value = component['metrics'][metric]['total']
             if min_val is not None and min_val > value:
                 min_val = value
@@ -221,13 +223,14 @@ class NewRelicPluginAgent(helper.Controller):
         body = {'agent': self.agent_data, 'components': components}
         LOGGER.debug(body)
         try:
-            response = requests.post(self.endpoint,
-                                     headers=self.http_headers,
-                                     proxies=self.proxies,
-                                     data=json.dumps(body, ensure_ascii=False),
-                                     timeout=self.config.get('newrelic_api_timeout', 10),
-                                     verify=self.config.get('verify_ssl_cert',
-                                                            True))
+            response = requests.post(
+                self.endpoint,
+                headers=self.http_headers,
+                proxies=self.proxies,
+                data=json.dumps(body, ensure_ascii=False),
+                timeout=self.config.get('newrelic_api_timeout', 10),
+                verify=self.config.get('verify_ssl_cert', True)
+            )
             LOGGER.debug('Response: %s: %r',
                          response.status_code,
                          response.content.strip())

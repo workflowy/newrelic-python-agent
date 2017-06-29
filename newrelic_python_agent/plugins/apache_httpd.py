@@ -72,7 +72,7 @@ class ApacheHTTPD(base.HTTPStatsPlugin):
 
         for line in data.splitlines():
             if line.find('Scoreboard') != -1:
-                scoreboard = line.replace('Scoreboard: ','')
+                scoreboard = line.replace('Scoreboard: ', '')
                 for i in range(0, len(scoreboard)):
                     score_out[scoreboard[i]] += 1
         return score_out
@@ -121,4 +121,3 @@ class ApacheHTTPD(base.HTTPStatsPlugin):
             else:
                 LOGGER.debug('Found unmapped key/value pair: %s = %s',
                              key, value)
-

@@ -98,4 +98,3 @@ class uWSGI(base.SocketStatsPlugin):
             data = re.sub(r'"HTTP_COOKIE=[^"]*"', '""', data)
             return json.loads(data)
         return {}
-

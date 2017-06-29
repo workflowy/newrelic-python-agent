@@ -92,4 +92,4 @@ class APC(base.JSONStatsPlugin):
         self.add_derive_value('User Cache/Misses', 'keys', misses)
         self.add_derive_value('User Cache/Inserts', 'keys',
                               user_stats.get('ninserts',
-                                             user_stats.get('num_inserts',0)))
+                                             user_stats.get('num_inserts', 0)))

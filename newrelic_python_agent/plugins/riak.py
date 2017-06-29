@@ -143,7 +143,6 @@ class Riak(base.JSONStatsPlugin):
         self.add_derive_value('Requests/Redirected', 'requests',
                               stats.get('coord_redirs_total', 0))
 
-
         self.add_gauge_value('Ring/Members', 'members',
                              len(stats.get('ring_members', list())))
         self.add_gauge_value('Ring/Partitions', 'partitions',
