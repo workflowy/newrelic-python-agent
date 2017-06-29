@@ -6,7 +6,7 @@ import json
 import logging
 import re
 
-from newrelic_plugin_agent.plugins import base
+from newrelic_python_agent.plugins import base
 
 LOGGER = logging.getLogger(__name__)
 
