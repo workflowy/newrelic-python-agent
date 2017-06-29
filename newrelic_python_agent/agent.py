@@ -13,8 +13,8 @@ import sys
 import threading
 import time
 
-from newrelic_plugin_agent import __version__
-from newrelic_plugin_agent import plugins
+from newrelic_python_agent import __version__
+from newrelic_python_agent import plugins
 
 is_py2 = sys.version[0] == '2'
 if is_py2:
