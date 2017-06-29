@@ -36,7 +36,7 @@ Installation Instructions
 
     $ pip install newrelic-python-agent
 
-* See ``pip`` installation instructions at http://www.pip-installer.org/en/latest/installing.html
+* See ``pip`` installation instructions at https://pip.pypa.io/en/stable/installing/
 
 2. Copy the configuration file example from ``/opt/newrelic-python-agent/newrelic-python-agent.cfg`` to ``/etc/newrelic/newrelic-python-agent.cfg`` and edit the configuration in that file.
 
@@ -70,7 +70,7 @@ Installing Additional Requirements
 ----------------------------------
 
 To use the MongoDB the ``mongodb`` library is required. For the pgBouncer or PostgreSQL plugin you must install the ``psycopg2`` library. To easily do
-this, make sure you have the latest version of ``pip`` installed (http://www.pip-installer.org/). This should be done after installing the agent itself:
+this, make sure you have the latest version of ``pip`` installed (https://pip.pypa.io/). This should be done after installing the agent itself:
 
 ::
 
