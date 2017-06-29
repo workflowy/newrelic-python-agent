@@ -31,8 +31,8 @@ else:
 LOGGER = logging.getLogger(__name__)
 
 
-class NewRelicPluginAgent(helper.Controller):
-    """The NewRelicPluginAgent class implements a agent that polls plugins
+class NewRelicPythonAgent(helper.Controller):
+    """The NewRelicPythonAgent class implements a agent that polls plugins
     every minute and reports the state to NewRelic.
 
     """
@@ -43,13 +43,13 @@ class NewRelicPluginAgent(helper.Controller):
     WAKE_INTERVAL = 60
 
     def __init__(self, args, operating_system):
-        """Initialize the NewRelicPluginAgent object.
+        """Initialize the NewRelicPythonAgent object.
 
         :param argparse.Namespace args: Command line arguments
         :param str operating_system: The operating_system name
 
         """
-        super(NewRelicPluginAgent, self).__init__(args, operating_system)
+        super(NewRelicPythonAgent, self).__init__(args, operating_system)
         self.derive_last_interval = dict()
         self.endpoint = self.PLATFORM_URL
         self.http_headers = {'Accept': 'application/json',
@@ -98,7 +98,7 @@ class NewRelicPluginAgent(helper.Controller):
 
         """
         licensekey = os.getenv('NEWRELIC_LICENSE_KEY')
-        if licensekey==None:
+        if licensekey is None:
             licensekey = self.config.application.license_key
         return licensekey
 
@@ -363,7 +363,7 @@ def main():
     if args.configure:
         print('Configuration')
         sys.exit(0)
-    helper.start(NewRelicPluginAgent)
+    helper.start(NewRelicPythonAgent)
 
 
 if __name__ == '__main__':
