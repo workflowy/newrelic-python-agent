@@ -30,7 +30,7 @@ The configuration file uses YAML as its format. Most tickets for non-working ins
 
 Installation Instructions
 -------------------------
-1. Install via ``pip`` *:
+1. Install via ``pip``:
 
 ::
 
@@ -38,25 +38,33 @@ Installation Instructions
 
 * See ``pip`` installation instructions at https://pip.pypa.io/en/stable/installing/
 
-2. Copy the configuration file example from ``/opt/newrelic-python-agent/newrelic-python-agent.cfg`` to ``/etc/newrelic/newrelic-python-agent.cfg`` and edit the configuration in that file.
+2. Create a newrelic user and config folder (NOTE: this step is not needed if you already have an official NewRelic agent installed)
 
 ::
 
-    $ NRCFGFILE=/etc/newrelic/newrelic-plugin-agent.cfg; if [[ ! -f "$NRCFGFILE" ]] ; then cp /opt/newrelic-plugin-agent/newrelic-plugin-agent.cfg $NRCFGFILE; fi
+    $ useradd -m newrelic
+    $ NRLOGDIR=/etc/newrelic; if [ ! -d "$NRLOGDIR" ]; then mkdir $NRLOGDIR && chown -R newrelic:newrelic $NRLOGDIR && chmod -R 755 $NRLOGDIR; fi
 
-3. Make a ``/var/log/newrelic`` directory and make sure it is writable by the ``root`` user:
+3. Copy the configuration file example from ``/opt/newrelic-python-agent/newrelic-python-agent.cfg`` to ``/etc/newrelic/newrelic-python-agent.cfg`` and edit the configuration in that file. (You need to add your API key and enable your agents)
 
 ::
 
-    $ NRLOGDIR=/var/log/newrelic; if [ ! -d "$NRLOGDIR" ]; then mkdir $NRLOGDIR && chown -R root:root $NRLOGDIR && chmod -R 755 $NRLOGDIR; fi
+    $ NRCFGFILE=/etc/newrelic/newrelic-python-agent.cfg; if [[ ! -f "$NRCFGFILE" ]] ; then cp /opt/newrelic-python-agent/newrelic-python-agent.cfg $NRCFGFILE; fi
+    $ nano /etc/newrelic/newrelic-python-agent.cfg
 
-4. Make a ``/var/run/newrelic`` directory and make sure it is writable by the ``newrelic`` user:
+4. Make a ``/var/log/newrelic`` directory and make sure it is writable by the ``newrelic`` user:
+
+::
+
+    $ NRLOGDIR=/var/log/newrelic; if [ ! -d "$NRLOGDIR" ]; then mkdir $NRLOGDIR && chown -R newrelic:newrelic $NRLOGDIR && chmod -R 755 $NRLOGDIR; fi
+
+5. Make a ``/var/run/newrelic`` directory and make sure it is writable by the ``newrelic`` user:
 
 ::
 
     $ NRRUNDIR=/var/run/newrelic; if [ ! -d "$NRRUNDIR" ]; then mkdir $NRRUNDIR && chown -R newrelic:newrelic $NRRUNDIR && chmod -R 755 $NRRUNDIR; fi
 
-5. Run the app:
+6. Run the app:
 
 ::
 
@@ -65,6 +73,9 @@ Installation Instructions
 Where ``-f`` is to run it in the foreground instead of as a daemon.
 
 Sample configuration and init.d scripts are installed to ``/opt/newrelic-python-agent`` in addition to a PHP script required for APC monitoring.
+
+``/opt/newrelic-python-agent/`` should also contain init.d scripts for Debian (Ubuntu) and REHL. New distro version with Systemd may require differnet init scripts.
+On Ubuntu systems 16.04 and newer, you can try running ``systemctl enable newrelic-python-agent`` from /etc/init.d to automatically generate a Systemd service file.
 
 Installing Additional Requirements
 ----------------------------------
