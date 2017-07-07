@@ -24,7 +24,7 @@ if sys.version_info < (2, 7, 0):
 setup(name='newrelic_python_agent',
       version='1.3.0',
       description='Python based agent for collecting metrics for NewRelic',
-      url='https://github.com/MeetMe/newrelic-python-agent',
+      url='https://github.com/NewRelic-Python-Plugins/newrelic-python-agent',
       packages=['newrelic_python_agent', 'newrelic_python_agent.plugins'],
       author='Gavin M. Roy',
       author_email='gavinmroy@gmail.com',

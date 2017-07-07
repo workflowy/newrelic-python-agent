@@ -44,11 +44,17 @@ Installation Instructions
 
     $ NRCFGFILE=/etc/newrelic/newrelic-plugin-agent.cfg; if [[ ! -f "$NRCFGFILE" ]] ; then cp /opt/newrelic-plugin-agent/newrelic-plugin-agent.cfg $NRCFGFILE; fi
 
-3. Make a ``/var/log/newrelic`` directory and make sure it is writable by the ``root`` user:
+4. Create a ``newrelic`` user.
 
 ::
 
-    $ NRLOGDIR=/var/log/newrelic; if [ ! -d "$NRLOGDIR" ]; then mkdir $NRLOGDIR && chown -R root:root $NRLOGDIR && chmod -R 755 $NRLOGDIR; fi
+    $ useradd -m newrelic
+
+3. Make a ``/var/log/newrelic`` directory and make sure it is writable by the ``newrelic`` user:
+
+::
+
+    $ NRLOGDIR=/var/log/newrelic; if [ ! -d "$NRLOGDIR" ]; then mkdir $NRLOGDIR && chown -R newrelic:newrelic $NRLOGDIR && chmod -R 755 $NRLOGDIR; fi
 
 4. Make a ``/var/run/newrelic`` directory and make sure it is writable by the ``newrelic`` user:
 
@@ -65,6 +71,9 @@ Installation Instructions
 Where ``-f`` is to run it in the foreground instead of as a daemon.
 
 Sample configuration and init.d scripts are installed to ``/opt/newrelic-python-agent`` in addition to a PHP script required for APC monitoring.
+
+``/opt/newrelic-python-agent/`` should also contain init.d scripts for Debian (Ubuntu) and REHL. New distro version with Systemd may require differnet init scripts.
+If after correctly moving the init.d scripts for our chosen OS you recieve errors, you can try running ``systemctl enable newrelic-python-agent`` to automatically generate a Systemd service file.
 
 Installing Additional Requirements
 ----------------------------------
