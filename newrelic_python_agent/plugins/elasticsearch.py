@@ -18,7 +18,7 @@ class ElasticSearch(base.JSONStatsPlugin):
     GAUGE_MATCH = ['Current']
 
     DEFAULT_HOST = 'localhost'
-    DEFAULT_PATH = '/_nodes/stats?all'
+    DEFAULT_PATH = '/_nodes/stats'
     DEFAULT_PORT = 9200
     GUID = 'com.meetme.newrelic_elasticsearch_node_agent'
 
