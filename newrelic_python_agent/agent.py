@@ -36,8 +36,10 @@ class NewRelicPythonAgent(helper.Controller):
     every minute and reports the state to NewRelic.
 
     """
-    IGNORE_KEYS = ['license_key', 'proxy', 'endpoint',
-                   'poll_interval', 'wake_interval']
+
+    IGNORE_KEYS = ['license_key', 'proxy', 'endpoint', 'verify_ssl_cert',
+                   'poll_interval', 'wake_interval', 'newrelic_api_timeout']
+
     MAX_METRICS_PER_REQUEST = 10000
     PLATFORM_URL = 'https://platform-api.newrelic.com/platform/v1/metrics'
     WAKE_INTERVAL = 60
@@ -253,9 +255,8 @@ class NewRelicPythonAgent(helper.Controller):
                                      headers=self.http_headers,
                                      proxies=self.proxies,
                                      data=request_body,
-                                     timeout=self.config.get('newrelic_api_timeout', 10),
-                                     verify=self.config.get('verify_ssl_cert',
-                                                            True))
+                                     timeout=self.config.application.get('newrelic_api_timeout', 10),
+                                     verify=self.config.application.get('verify_ssl_cert', True))
 
             LOGGER.debug('Response: %s: %r',
                          response.status_code,
