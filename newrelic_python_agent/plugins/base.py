@@ -14,6 +14,68 @@ import urlparse
 LOGGER = logging.getLogger(__name__)
 
 
+class ConfigPlugin(object):
+    """This plugin type is for dynamically generating application config data.
+    These will be run alongside the metric collection plugins as a separate thread
+    but instead of returning newrelic metric data, they can return configuration
+    data for use in the agent.  This is useful if you need to dynamically adjust
+    the things you are polling.
+
+    :param dict config: The configuration block.
+    :param dict previous_state: The state returned by the previous run.
+
+    """
+    def __init__(self, config, previous_state=None):
+        self.config = config
+        LOGGER.debug('%s config: %r', self.__class__.__name__, self.config)
+        self.previous_state = previous_state or dict()
+        self.state = {
+            'timestamp': time.time(),
+            'application': {}
+        }
+        self.refresh_interval = int(self.config.get('refresh_interval', 0))
+
+    def start(self):
+        """Start the config plugin.  If refresh_interval is set in the config, then it
+        will only run if that amount of time has passed since the last time it returned results.
+
+        """
+        should_run = True
+        if self.refresh_interval > 0:
+            prev = self.previous_state.get('timestamp', 0)
+            dur = time.time() - prev
+            if dur < self.refresh_interval:
+                LOGGER.info("skipping run - refresh interval not met (%d < %d)", dur, self.refresh_interval)
+                should_run = False
+            else:
+                LOGGER.info("will run - refresh interval exceeded (%d >= %d)", dur, self.refresh_interval)
+        if should_run:
+            self.build_config()
+
+    def build_config(self):
+        """Extend this method to build a config result to return."""
+        raise NotImplementedError
+
+    def results(self):
+        """Return the results.
+
+        :return: The application config to apply.
+        :rtype: dict
+
+        """
+        return self.state
+
+    def add_config_block(self, name, data):
+        """Add a config block to the result for a specific block name.
+        This will replace the config block for the plugin specified by `name`.
+
+        :param str name: The name of the plugin block to replace.
+        :param list data: The list of instance configs for the plugin block.
+
+        """
+        self.state['application'][name] = data
+
+
 class Plugin(object):
 
     GUID = 'com.meetme.newrelic_python_agent'
