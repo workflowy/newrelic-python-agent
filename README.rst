@@ -135,6 +135,7 @@ You can also use an optional description with the plugin name to define
 multiple descrete blocks that use the same plugin:
 
 ::
+
     plugin_name:local:
       - name: local_target
         host: localhost
@@ -156,6 +157,7 @@ returning metric data, it returns config blocks to apply to the running
 config.  The result is a dictionary that looks like:
 
 ::
+
     timestamp: unix timestamp
     application:
         plugin_name:desc1:
@@ -180,6 +182,7 @@ since the last successful run.  Specify the number of seconds to wait
 between runs.  An example config that sets a 5 minute refresh interval:
 
 ::
+
     exampleConfigPlugin:
         name: somename
         refresh_interval: 300
