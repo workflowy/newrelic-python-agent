@@ -278,16 +278,21 @@ class NewRelicPythonAgent(helper.Controller):
         while self.config_queue.qsize():
             (name, data) = self.config_queue.get()
             if isinstance(data, dict) and data.get('application'):
-                # this is a success, so store save this
+                LOGGER.debug("%s results" % name, extra={"results": data.get('application')})
+
+                # this is a success, so save this
                 self.config_last_result[name] = data
+
+                # process each result individually
                 for plugin_name in data['application'].keys():
-                    action = "empty"
+                    action = None
                     if data['application'][plugin_name]:
                         # config is not empty
                         if plugin_name in self.config.application \
                                 and self.config.application[plugin_name] == data['application'][plugin_name]:
                             action = "unchanged"
                         else:
+                            # update or add new block
                             self.config.application.update({plugin_name: data['application'][plugin_name]})
                             action = "updated"
                             self.clean_values = True
@@ -298,7 +303,7 @@ class NewRelicPythonAgent(helper.Controller):
                         self.clean_values = True
 
                     if action:
-                        LOGGER.info("Plugin instance %s result: %s %s", name, plugin_name, action)
+                        LOGGER.info("Plugin instance %s result %s %s", name, plugin_name, action)
 
     def send_data_to_newrelic(self):
         """Process the queue of metric plugin results"""
