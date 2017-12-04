@@ -20,6 +20,11 @@ Some settings can be overridden by environment variables:
 The following settings are supported:
 
     `name`: A descriptive name of this config block
+    `target_plugin_name`: The application name that the resulting config block should be assigned to.
+                          If you have a static 'mysql' block already configured, you might want the
+                          dynamic one generated here assigned as 'mysql:RDS' instead.
+        type: string
+        default: 'mysql'
     `refresh_interval`: How often this module should run (seconds)
         type: integer
         default: 0 (run every time)
@@ -275,7 +280,7 @@ class MySQLConfig(base.ConfigPlugin):
         :return: None
         """
 
-        plugin = self.config.get('target_plugin_name')
+        plugin = self.config.get('target_plugin_name', 'mysql')
         if not plugin:
             LOGGER.error("must specify 'target_plugin_name' config value")
             return
