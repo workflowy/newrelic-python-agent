@@ -131,6 +131,62 @@ You can also use a single mapping like follows:
 
 The fields for plugin configurations can vary due to a plugin's configuration requirements. The name value in each stanza is only required when using multiple targets in a plugin. If it is only a single target, the name will be taken from the server's hostname.
 
+You can also use an optional description with the plugin name to define
+multiple discrete blocks that use the same plugin:
+
+::
+
+    plugin_name:local:
+      - name: local_target
+        host: localhost
+        foo: bar
+    plugin_name:remote:
+      - name: remote_target
+        host: remotehost
+        foo: bar
+
+This can be very useful when using dynamic config blocks.  You could
+specify a block that's statically defined and a separate set that's
+dynamically changed, even though both might use the same plugin type.
+
+Dynamic Plugins
+---------------
+If a plugin is a subclass of the ``base.ConfigPlugin`` class, then it is
+considered a config plugin, rather than a metric plugin.  Instead of
+returning metric data, it returns config blocks to apply to the running
+config.  The result is a dictionary that looks like:
+
+::
+
+    timestamp: unix timestamp
+    application:
+        plugin_name:desc1:
+            - name: config1
+              foo: bar
+            - name: config2
+              foo: bar
+        plugin_name:desc2:
+
+This will replace the config blocks as specified by ``plugin_name:desc1``
+and ``plugin_name:desc2`` in the running config.  If the new config for a
+block is empty (like ``plugin_name:desc2`` in this example), then the
+config block will be removed from the running config.  The entire config
+block is replaced by these results.
+
+This entire result is saved and presented to the plugin the next time it
+runs so it can know what the previous results were.  A base ``ConfigPlugin``
+plugin does not require any parameters to run, but can optionally take a
+``refresh_interval`` setting to determine how often it should run.  It
+uses the ``timestamp`` of the previous results to know how long it's been
+since the last successful run.  Specify the number of seconds to wait
+between runs.  An example config that sets a 5 minute refresh interval:
+
+::
+
+    exampleConfigPlugin:
+        name: somename
+        refresh_interval: 300
+
 APC Installation Notes
 ----------------------
 Copy the ``apc-nrp.php`` script to a directory that can be served by your web server or ``php-fpm`` application. Edit the ``newrelic-python-agent`` configuration to point to the appropriate URL.
@@ -290,7 +346,12 @@ Configuration Example
     Application:
       license_key: REPLACE_WITH_REAL_KEY
       poll_interval: 60
+
+      # optional settings (and their defaults) when talking to newrelic:
       #newrelic_api_timeout: 10
+      #verify_ssl_cert: true
+      #skip_newrelic_upload: true
+      #endpoint: https://platform-api.newrelic.com/platform/v1/metrics
       #proxy: http://localhost:8080
 
       apache_httpd:
@@ -446,7 +507,7 @@ Configuration Example
           maxBytes: 10485760
           backupCount: 3
       loggers:
-        newrelic-python-agent:
+        newrelic_python_agent:
           level: INFO
           propagate: True
           handlers: [console, file]

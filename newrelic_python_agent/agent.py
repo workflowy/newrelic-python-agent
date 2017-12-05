@@ -17,6 +17,7 @@ import gzip
 
 from newrelic_python_agent import __version__
 from newrelic_python_agent import plugins
+import newrelic_python_agent.plugins.base as base
 
 is_py2 = sys.version[0] == '2'
 if is_py2:
@@ -38,7 +39,7 @@ class NewRelicPythonAgent(helper.Controller):
     """
 
     IGNORE_KEYS = ['license_key', 'proxy', 'endpoint', 'verify_ssl_cert',
-                   'poll_interval', 'wake_interval', 'newrelic_api_timeout']
+                   'poll_interval', 'wake_interval', 'newrelic_api_timeout', 'skip_newrelic_upload']
 
     MAX_METRICS_PER_REQUEST = 10000
     PLATFORM_URL = 'https://platform-api.newrelic.com/platform/v1/metrics'
@@ -53,6 +54,8 @@ class NewRelicPythonAgent(helper.Controller):
         """
         super(NewRelicPythonAgent, self).__init__(args, operating_system)
         self.derive_last_interval = dict()
+        self.config_last_result = dict()
+        self.clean_values = False
         self.endpoint = self.PLATFORM_URL
         self.http_headers = {'Accept': 'application/json',
                              'Content-Encoding': 'gzip',
@@ -63,6 +66,7 @@ class NewRelicPythonAgent(helper.Controller):
                                self.config.application.get('poll_interval') or
                                self.WAKE_INTERVAL)
         self.next_wake_interval = int(self._wake_interval)
+        self.config_queue = queue.Queue()
         self.publish_queue = queue.Queue()
         self.threads = list()
         info = tuple([__version__] + list(self.system_platform))
@@ -104,26 +108,80 @@ class NewRelicPythonAgent(helper.Controller):
             licensekey = self.config.application.license_key
         return licensekey
 
-    def poll_plugin(self, plugin_name, plugin, config):
+    def get_instance_name(self, plugin_name, instance):
+        """
+        Determine a unique instance name for a plugin.  This is done by combining the
+        plugin block name + the name field + an instance number
+
+        Example:
+            plugin name = mysql[:desc]
+            block name = name field in block or unnamed
+            instance number = incremental number in case previous is not unique
+
+        :param str plugin_name: The plugin block name as defined in the application config
+        :param dict instance: The instance config block
+        :rtype: str
+        """
+        # start with the base name of the plugin + name field
+        name = "%s:%s" % (plugin_name, instance.get('name', 'unnamed'))
+        i = 0
+        instance_name = "%s:%i" % (name, i)
+        while instance_name in self.thread_names:
+            i = i + 1
+            instance_name = "%s:%i" % (name, i)
+
+        return instance_name
+
+    def start_plugin(self, plugin_name, plugin, config):
         """Kick off a background thread to run the processing task.
 
-        :param newrelic_python_agent.plugins.base.Plugin plugin: The plugin
-        :param dict config: The config for the plugin
+        :param plugin: The plugin name as defined in the application config
+        :param config: The set of instance configs for the plugin
+        :type plugin: newrelic_python_agent.plugins.base.Plugin
+        :type config: dict or list(dict)
 
         """
 
         if not isinstance(config, (list, tuple)):
             config = [config]
 
+        LOGGER.debug("Plugin config: %s", config)
+
+        # the instance names must be unique so we can store the results for each.
+        # use the 'name' field, if specified.  If there are duplicate names, we
+        # simply append a number so it is unique.  As long as the the order in the
+        # config remains the same, then the instance number will remain the same.
         for instance in config:
-            thread = threading.Thread(target=self.thread_process,
-                                      kwargs={'config': instance,
-                                              'name': plugin_name,
-                                              'plugin': plugin,
-                                              'poll_interval':
-                                                  int(self._wake_interval)})
+            instance_name = self.get_instance_name(plugin_name, instance)
+
+            if issubclass(plugin, base.ConfigPlugin):
+                thread = threading.Thread(target=self.thread_config_process,
+                                          kwargs={'config': instance,
+                                                  'name': instance_name,
+                                                  'plugin': plugin})
+            else:
+                thread = threading.Thread(target=self.thread_metric_process,
+                                          kwargs={'config': instance,
+                                                  'name': instance_name,
+                                                  'plugin': plugin,
+                                                  'poll_interval':
+                                                      int(self._wake_interval)})
+            LOGGER.info("Starting plugin instance %s as thread %s", instance_name, thread.getName())
+            self.thread_names[instance_name] = thread.getName()
             thread.start()
             self.threads.append(thread)
+
+    def clean_last_values(self):
+        """Remove any saved value data for plugins that are no longer configured"""
+        for key in self.derive_last_interval.keys():
+            if key not in self.thread_names:
+                LOGGER.info("Removing last interval data for unused %s", key)
+                self.derive_last_interval.pop(key)
+        for key in self.config_last_result.keys():
+            if key not in self.thread_names:
+                LOGGER.info("Removing last config result for unused %s", key)
+                self.config_last_result.pop(key)
+        self.clean_values = False
 
     def process(self):
         """This method is called after every sleep interval. If the intention
@@ -132,21 +190,31 @@ class NewRelicPythonAgent(helper.Controller):
 
         """
         start_time = time.time()
-        self.start_plugin_polling()
+        self.start_plugins()
 
         # Sleep for a second while threads are running
         while self.threads_running:
             time.sleep(1)
 
+        # threads are done, so empty the list
         self.threads = list()
+
+        # send any collected metrics to newrelic
         self.send_data_to_newrelic()
+
+        # perform any config updates
+        self.process_config_plugins()
+
+        if self.clean_values:
+            self.clean_last_values()
+
         duration = time.time() - start_time
         self.next_wake_interval = self._wake_interval - duration
         if self.next_wake_interval < 1:
             LOGGER.warning('Poll interval took greater than %i seconds',
                            duration)
             self.next_wake_interval = int(self._wake_interval)
-        LOGGER.info('Stats processed in %.2f seconds, next wake in %i seconds',
+        LOGGER.info('Threads processed in %.2f seconds, next wake in %i seconds',
                     duration, self.next_wake_interval)
 
     def process_min_max_values(self, component):
@@ -199,7 +267,46 @@ class NewRelicPythonAgent(helper.Controller):
             }
         return None
 
+    def configuration_reloaded(self):
+        # if the configuration was reloaded, then flag it so we can
+        # check if we need to purget any old data.
+        self.clean_values = True
+
+    def process_config_plugins(self):
+        """Process the queue of config plugin results"""
+
+        while self.config_queue.qsize():
+            (name, data) = self.config_queue.get()
+            if isinstance(data, dict) and data.get('application'):
+                LOGGER.debug("%s results" % name, extra={"results": data.get('application')})
+
+                # this is a success, so save this
+                self.config_last_result[name] = data
+
+                # process each result individually
+                for plugin_name in data['application'].keys():
+                    action = None
+                    if data['application'][plugin_name]:
+                        # config is not empty
+                        if plugin_name in self.config.application \
+                                and self.config.application[plugin_name] == data['application'][plugin_name]:
+                            action = "unchanged"
+                        else:
+                            # update or add new block
+                            self.config.application.update({plugin_name: data['application'][plugin_name]})
+                            action = "updated"
+                            self.clean_values = True
+                    elif plugin_name in self.config.application:
+                        # config is empty for an existing plugin_name, so remove it
+                        self.config.application.pop(plugin_name)
+                        action = "removed"
+                        self.clean_values = True
+
+                    if action:
+                        LOGGER.info("Plugin instance %s result %s %s", name, plugin_name, action)
+
     def send_data_to_newrelic(self):
+        """Process the queue of metric plugin results"""
         metrics = 0
         components = list()
         while self.publish_queue.qsize():
@@ -234,6 +341,10 @@ class NewRelicPythonAgent(helper.Controller):
         """
         if not metrics:
             LOGGER.warning('No metrics to send to NewRelic this interval')
+            return
+
+        if self.config.application.get('skip_newrelic_upload'):
+            LOGGER.info('Not sending %i metrics to NewRelic', metrics)
             return
 
         LOGGER.info('Sending %i metrics to NewRelic', metrics)
@@ -286,28 +397,40 @@ class NewRelicPythonAgent(helper.Controller):
             LOGGER.exception('Attempting to import %s', plugin_path)
             return None
 
-    def start_plugin_polling(self):
-        """Iterate through each plugin and start the polling process."""
+    def start_plugins(self):
+        """Iterate through each plugin and start the thread(s)."""
+
+        # reset the configured instance names
+        self.thread_names = dict()
+
         for plugin in [key for key in self.config.application.keys()
                        if key not in self.IGNORE_KEYS]:
-            LOGGER.info('Enabling plugin: %s', plugin)
+
+            # ignore this if the config is empty
+            if not self.config.application.get(plugin):
+                continue
+
+            LOGGER.info('Checking plugin config: %s', plugin)
+            # support plugin:id format to allow multiple config blocks
+            # for a single plugin
+            plugin_name = plugin.split(":", 1)[0]
             plugin_class = None
 
             # If plugin is part of the core agent plugin list
-            if plugin in plugins.available:
-                plugin_class = self._get_plugin(plugins.available[plugin])
+            if plugin_name in plugins.available:
+                plugin_class = self._get_plugin(plugins.available[plugin_name])
 
             # If plugin is in config and a qualified class name
-            elif '.' in plugin:
-                plugin_class = self._get_plugin(plugin)
+            elif '.' in plugin_name:
+                plugin_class = self._get_plugin(plugin_name)
 
             # If plugin class could not be imported
             if not plugin_class:
-                LOGGER.error('Enabled plugin %s not available', plugin)
+                LOGGER.error('Plugin %s not available', plugin_name)
                 continue
 
-            self.poll_plugin(plugin, plugin_class,
-                             self.config.application.get(plugin))
+            self.start_plugin(plugin, plugin_class,
+                              self.config.application.get(plugin))
 
     @property
     def threads_running(self):
@@ -321,22 +444,36 @@ class NewRelicPythonAgent(helper.Controller):
                 return True
         return False
 
-    def thread_process(self, name, plugin, config, poll_interval):
+    def thread_config_process(self, name, plugin, config):
+        """
+        Create a thread process to return a dynamic config for a plugin.
+        The result of this plugin is added to a Queue object which is used
+        to maintain the stack of running config plugins.
+
+        :param str name: The unique instance name of the plugin
+        :param newrelic_python_agent.plugins.base.ConfigPlugin plugin: The plugin class
+        :param dict config: The plugin configuration
+        """
+        previous_state = self.config_last_result.get(name)
+        obj = plugin(config, previous_state)
+        obj.start()
+        self.config_queue.put((name, obj.results()))
+
+    def thread_metric_process(self, name, plugin, config, poll_interval):
         """Created a thread process for the given name, plugin class,
         config and poll interval. Process is added to a Queue object which
-        used to maintain the stack of running plugins.
+        used to maintain the stack of running metrics plugins.
 
-        :param str name: The name of the plugin
-        :param newrelic_python_agent.plugin.Plugin plugin: The plugin class
+        :param str name: The unique instance name of the plugin
+        :param newrelic_python_agent.plugins.base.Plugin plugin: The plugin class
         :param dict config: The plugin configuration
         :param int poll_interval: How often the plugin is invoked
 
         """
-        instance_name = "%s:%s" % (name, config.get('name', 'unnamed'))
         obj = plugin(config, poll_interval,
-                     self.derive_last_interval.get(instance_name))
+                     self.derive_last_interval.get(name))
         obj.poll()
-        self.publish_queue.put((instance_name, obj.values(),
+        self.publish_queue.put((name, obj.values(),
                                 obj.derive_last_interval))
 
     @property
