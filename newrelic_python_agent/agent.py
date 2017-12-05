@@ -168,7 +168,7 @@ class NewRelicPythonAgent(helper.Controller):
                                                       int(self._wake_interval)})
             LOGGER.info("Starting plugin instance %s as thread %s", instance_name, thread.getName())
             self.thread_names[instance_name] = thread.getName()
-            thread.run()
+            thread.start()
             self.threads.append(thread)
 
     def clean_last_values(self):
