@@ -132,7 +132,7 @@ You can also use a single mapping like follows:
 The fields for plugin configurations can vary due to a plugin's configuration requirements. The name value in each stanza is only required when using multiple targets in a plugin. If it is only a single target, the name will be taken from the server's hostname.
 
 You can also use an optional description with the plugin name to define
-multiple descrete blocks that use the same plugin:
+multiple discrete blocks that use the same plugin:
 
 ::
 
