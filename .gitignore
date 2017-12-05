@@ -113,6 +113,8 @@ ehthumbs_vista.db
 Desktop.ini
 
 # VIM tempfiles
+*~
+*.swo
 *.swp
 
 # Recycle Bin used on file shares
