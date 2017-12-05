@@ -122,7 +122,7 @@ class NewRelicPythonAgent(helper.Controller):
                                               'plugin': plugin,
                                               'poll_interval':
                                                   int(self._wake_interval)})
-            thread.run()
+            thread.start()
             self.threads.append(thread)
 
     def process(self):
