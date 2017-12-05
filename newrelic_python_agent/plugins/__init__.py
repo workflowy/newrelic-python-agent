@@ -12,6 +12,7 @@ available = {
     'haproxy': 'newrelic_python_agent.plugins.haproxy.HAProxy',
     'memcached': 'newrelic_python_agent.plugins.memcached.Memcached',
     'mongodb': 'newrelic_python_agent.plugins.mongodb.MongoDB',
+    'mysql': 'newrelic_python_agent.plugins.mysql.MySQL',
     'nginx': 'newrelic_python_agent.plugins.nginx.Nginx',
     'pgbouncer': 'newrelic_python_agent.plugins.pgbouncer.PgBouncer',
     'php_apc': 'newrelic_python_agent.plugins.php_apc.APC',
