@@ -215,11 +215,18 @@ class MySQLConfig(base.ConfigPlugin):
     def initialize(self):
         """Initialize ourselves, preparing the required variables."""
 
+        self.init_vars()
+        self.init_from_env()
+        self.init_verify_vars()
+        self.init_defaults()
+
+    def init_vars(self):
         self.rds_cache = dict()
         self.creds_cache = dict()
         self.exports_cache = dict()
         self.tags_cache = dict()
 
+    def init_from_env(self):
         # This requires some manipulation, so handled separately.
         r = self.get_region_from_environment()
         if r:
@@ -231,6 +238,7 @@ class MySQLConfig(base.ConfigPlugin):
             if r:
                 self.config[i] = r
 
+    def init_verify_vars(self):
         # we expect/want these to be lists, but support
         # a single string (with comma separated items) for convenience
         # or just a single dict (for targets)
@@ -241,6 +249,15 @@ class MySQLConfig(base.ConfigPlugin):
                 elif isinstance(self.config[prop], dict):
                     self.config[prop] = [self.config[prop]]
 
+        if 'newrelic_name_format' in self.config:
+            # make sure this is valid and doesn't cause an exception
+            try:
+                self.format_newrelic_name('testname', 'testregion')
+            except Exception as e:
+                LOGGER.warning("newrelic_name_format is invalid. reverting to default.", e)
+                del self.config['newrelic_name_format']
+
+    def init_defaults(self):
         # default to only the current region if none are specified.
         if 'regions' not in self.config:
             self.config['regions'] = self.get_default_region()
@@ -731,19 +748,16 @@ class MySQLConfig(base.ConfigPlugin):
         return " OR ".join(ors)
 
     def format_newrelic_name(self, name, region):
-        try:
-            f = self.get_config_value('newrelic_name_format')
-            account_id = self.get_config_value('aws_account_id') or ''
-            account_name = self.get_config_value('aws_account_name') or ''
-            account = account_name or account_id
-            desc = f.format(dbname=name,
-                            account_id=account_id,
-                            account_name=account_name,
-                            account=account,
-                            region=region)
-            return desc
-        except KeyError as e:
-            LOGGER.error("Error with newrelic_name_format! ", e)
+        f = self.get_config_value('newrelic_name_format')
+        account_id = self.get_config_value('aws_account_id') or ''
+        account_name = self.get_config_value('aws_account_name') or ''
+        account = account_name or account_id
+        desc = f.format(dbname=name,
+                        account_id=account_id,
+                        account_name=account_name,
+                        account=account,
+                        region=region)
+        return desc
 
     def get_manual_instances(self):
         """
