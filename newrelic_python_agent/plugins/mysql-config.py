@@ -733,12 +733,13 @@ class MySQLConfig(base.ConfigPlugin):
     def format_newrelic_name(self, name, region):
         try:
             f = self.get_config_value('newrelic_name_format')
-            account_id = self.get_config_value('aws_account_id', '')
-            account_name = self.get_config_value('aws_account_name', '')
+            account_id = self.get_config_value('aws_account_id') or ''
+            account_name = self.get_config_value('aws_account_name') or ''
+            account = account_name or account_id
             desc = f.format(dbname=name,
                             account_id=account_id,
                             account_name=account_name,
-                            account=account_name or account_id,
+                            account=account,
                             region=region)
             return desc
         except KeyError as e:
