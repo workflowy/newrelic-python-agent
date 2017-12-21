@@ -253,8 +253,8 @@ class MySQLConfig(base.ConfigPlugin):
             # make sure this is valid and doesn't cause an exception
             try:
                 self.format_newrelic_name('testname', 'testregion')
-            except Exception as e:
-                LOGGER.warning("newrelic_name_format is invalid. reverting to default.", e)
+            except KeyError:
+                LOGGER.warning("newrelic_name_format is invalid. reverting to default.")
                 del self.config['newrelic_name_format']
 
     def init_defaults(self):
