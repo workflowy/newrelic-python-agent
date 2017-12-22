@@ -253,9 +253,8 @@ class MySQLConfig(base.ConfigPlugin):
             # make sure this is valid and doesn't cause an exception
             try:
                 self.format_newrelic_name('testname', 'testregion')
-            except KeyError:
-                LOGGER.warning("newrelic_name_format is invalid. reverting to default.")
-                del self.config['newrelic_name_format']
+            except KeyError as e:
+                raise Exception("newrelic_name_format is invalid! invalid key %s specified!" % e)
 
     def init_defaults(self):
         # default to only the current region if none are specified.
@@ -350,10 +349,15 @@ class MySQLConfig(base.ConfigPlugin):
             LOGGER.error("must specify 'target_plugin_name' config value")
             return
 
-        LOGGER.info("building config for '%s'", plugin)
-        self.initialize()
+        try:
+            LOGGER.info("initializing '%s'", plugin)
+            self.initialize()
+        except Exception as e:
+            LOGGER.error(e)
+            return
 
         try:
+            LOGGER.info("building config for '%s'", plugin)
             instances = self.get_all_rds_instances()
             instances.extend(self.get_manual_instances())
             LOGGER.info("found %s database instances to monitor", len(instances))
