@@ -443,12 +443,12 @@ class MySQL(base.Plugin):
                 # support comma-separated list
                 metrics = re.split("\s*,\s*", metrics)
 
-        self.log("debug", "metrics to collect: %s" % ", ".join(metrics))
+        self.logger.debug("metrics to collect: %s" % ", ".join(metrics))
         for cat in metrics:
             if cat in CATEGORIES:
                 self.add_category_stats(cat, cursor)
             else:
-                self.log('warning', "%s is not a valid metric category" % cat)
+                self.logger.warning("%s is not a valid metric category" % cat)
 
         if 'newrelic' in metrics:
             self.derive_newrelic_stats()
@@ -467,7 +467,7 @@ class MySQL(base.Plugin):
         if 'SQL' not in conf:
             return
 
-        self.log('debug', "Collecting stats for %s" % category)
+        self.logger.debug("Collecting stats for %s" % category)
         cursor.execute(conf['SQL'])
 
         # call the self.parse_"parser"_stats" function for each one to get the raw key/value pairs
@@ -576,14 +576,14 @@ class MySQL(base.Plugin):
         :param float value: The value of the metric
         """
         if self.is_number(value):
-            self.log('debug', "Collected raw metric: %s = %s" % (metric, value))
+            self.logger.debug("Collected raw metric: %s = %s" % (metric, value))
             self.raw_metrics[metric] = value
 
     def derive_newrelic_stats(self):
         """
         Derive all of the custom newrelic metric data from what we've collected.
         """
-        self.log('debug', "Collecting stats for newrelic")
+        self.logger.debug("Collecting stats for newrelic")
         self.derive_newrelic_volume()
         self.derive_newrelic_throughput()
         self.derive_newrelic_innodb()
@@ -884,6 +884,9 @@ class MySQL(base.Plugin):
         return args
 
     def poll(self):
+        # initialize a custom logger to always add these fields
+        self.logger = base.PluginLogger(LOGGER, dict(target_name=self.config['name'],
+                                                     hostname=self.config['host']))
         self.initialize()
         self.raw_metrics = dict()
         try:
@@ -895,12 +898,12 @@ class MySQL(base.Plugin):
             self.add_stats()
         except sql.Error as err:
             if _errno(err) == ER_ACCESS_DENIED_ERROR:
-                self.log('error', "Something is wrong with your user name or password")
+                self.logger.error("Something is wrong with your user name or password")
             elif _errno(err) == ER_BAD_DB_ERROR:
-                self.log('error', "Database does not exist")
+                self.logger.error("Database does not exist")
             else:
-                self.log('error', 'Could not connect to %s, skipping stats run: %s' %
-                         (self.__class__.__name__, err))
+                self.logger.error('Could not connect to %s, skipping stats run: %s' %
+                                  (self.__class__.__name__, err))
         finally:
             self.finish()
 
@@ -919,20 +922,5 @@ class MySQL(base.Plugin):
             col = len(self.derive_values) + len(self.gauge_values)
 
         dur = time.time() - self.poll_start_time
-        self.log(sev,
-                 '%s poll %s' % (self.__class__.__name__, desc),
-                 extra={"duration": "%.3f" % dur,
-                        "collected": col})
-
-    def log(self, sev, msg, extra={}):
-        """Provides a way to always log extra fields in log messages.
-
-        :param string sev: The severity to log as.  This should match a LOGGER function name like
-                           'info', 'warning', 'error', or 'debug'
-        :param string msg: The log message itself.
-        :param dict extra: Extra fields to log.  Useful with the json formatter.
-        :rtype: None
-        """
-        extra['target_name'] = self.config['name']
-        extra['hostname'] = self.config['host']
-        getattr(LOGGER, sev)(msg, extra=extra)
+        getattr(self.logger, sev)('%s poll %s' % (self.__class__.__name__, desc),
+                                  extra={"duration": "%.3f" % dur, "collected": col})
