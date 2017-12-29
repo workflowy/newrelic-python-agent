@@ -230,12 +230,14 @@ class MySQLConfig(base.ConfigPlugin):
         # This requires some manipulation, so handled separately.
         r = self.get_region_from_environment()
         if r:
+            LOGGER.info('using regions from environment: %s' % r)
             self.config['regions'] = r
 
         # these are supported straight overrides
         for i in ['aws_account_id', 'aws_account_name']:
             r = os.getenv(i.upper())
             if r:
+                LOGGER.info('using %s from environment: %s' % (i, r))
                 self.config[i] = r
 
     def init_verify_vars(self):
@@ -259,13 +261,16 @@ class MySQLConfig(base.ConfigPlugin):
     def init_defaults(self):
         # default to only the current region if none are specified.
         if 'regions' not in self.config:
+            LOGGER.info('setting regions to default')
             self.config['regions'] = self.get_default_region()
 
         # default account name is the accountid in the EC2 data
         if 'aws_account_id' not in self.config:
+            LOGGER.info('setting aws_account_id to default')
             self.config['aws_account_id'] = self.get_value_from_metadata('accountId')
 
         if 'newrelic_name_format' not in self.config:
+            LOGGER.info('setting newrelic_name_format to default')
             self.config['newrelic_name_format'] = self.DEFAULT_NAME_FORMAT
 
     def get_default_region(self):
@@ -297,7 +302,7 @@ class MySQLConfig(base.ConfigPlugin):
         :return: The AWS region the EC2 instance is running.
         :rtype: str or None
         """
-        LOGGER.info('Obtaining region from EC2 metadata.')
+        LOGGER.info('Obtaining %s from EC2 metadata.' % value)
         try:
             url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
             document = json.loads(urllib2.urlopen(url, timeout=3).read())
