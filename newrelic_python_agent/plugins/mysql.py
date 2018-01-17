@@ -502,7 +502,7 @@ class MySQL(base.Plugin):
             if metric_type == "counter":
                 # Unit/Second
                 unit = "/".join((unit, "Second"))
-                self.add_derive_value(metric, unit, self.raw_metrics[metric])
+                self.add_derive_value(metric, unit, self.raw_metrics[metric], rate=True)
             else:
                 self.add_gauge_value(metric, unit, self.raw_metrics[metric])
 

@@ -34,8 +34,8 @@ class Redis(base.SocketStatsPlugin):
         # but only if we have the previous values
         if ('Keys/Hit' in self.derive_last_interval.keys() and
                 'Keys/Missed' in self.derive_last_interval.keys()):
-            prev_hits = self.derive_last_interval['Keys/Hit']
-            prev_misses = self.derive_last_interval['Keys/Missed']
+            prev_hits = self.derive_last_interval['Keys/Hit'][0]
+            prev_misses = self.derive_last_interval['Keys/Missed'][0]
 
             # hits and misses since the last measure
             hits = stats.get('keyspace_hits', 0) - prev_hits
