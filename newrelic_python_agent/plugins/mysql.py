@@ -443,12 +443,12 @@ class MySQL(base.Plugin):
                 # support comma-separated list
                 metrics = re.split("\s*,\s*", metrics)
 
-        LOGGER.debug("metrics to collect: %s" % ", ".join(metrics))
+        self.logger.debug("metrics to collect: %s" % ", ".join(metrics))
         for cat in metrics:
             if cat in CATEGORIES:
                 self.add_category_stats(cat, cursor)
             else:
-                LOGGER.warning("%s is not a valid metric category" % cat)
+                self.logger.warning("%s is not a valid metric category" % cat)
 
         if 'newrelic' in metrics:
             self.derive_newrelic_stats()
@@ -467,7 +467,7 @@ class MySQL(base.Plugin):
         if 'SQL' not in conf:
             return
 
-        LOGGER.debug("Collecting stats for %s" % category)
+        self.logger.debug("Collecting stats for %s" % category)
         cursor.execute(conf['SQL'])
 
         # call the self.parse_"parser"_stats" function for each one to get the raw key/value pairs
@@ -576,14 +576,14 @@ class MySQL(base.Plugin):
         :param float value: The value of the metric
         """
         if self.is_number(value):
-            LOGGER.debug("Collected raw metric: %s = %s" % (metric, value))
+            self.logger.debug("Collected raw metric: %s = %s" % (metric, value))
             self.raw_metrics[metric] = value
 
     def derive_newrelic_stats(self):
         """
         Derive all of the custom newrelic metric data from what we've collected.
         """
-        LOGGER.debug("Collecting stats for newrelic")
+        self.logger.debug("Collecting stats for newrelic")
         self.derive_newrelic_volume()
         self.derive_newrelic_throughput()
         self.derive_newrelic_innodb()
@@ -884,39 +884,43 @@ class MySQL(base.Plugin):
         return args
 
     def poll(self):
+        # initialize a custom logger to always add these fields
+        self.logger = base.PluginLogger(LOGGER, dict(target_name=self.config['name'],
+                                                     hostname=self.config['host']))
         self.initialize()
         self.raw_metrics = dict()
         try:
             self.connection = self.connect()
+            cursor = self.connection.cursor()
+            self.collect_stats(cursor)
+            cursor.close()
+            self.connection.close()
+            self.add_stats()
         except sql.Error as err:
             if _errno(err) == ER_ACCESS_DENIED_ERROR:
-                LOGGER.error("Something is wrong with your user name or password")
+                self.logger.error("Something is wrong with your user name or password")
             elif _errno(err) == ER_BAD_DB_ERROR:
-                LOGGER.error("Database does not exist")
+                self.logger.error("Database does not exist")
             else:
-                LOGGER.error('Could not connect to %s, skipping stats run: %s',
-                             self.__class__.__name__, err)
-            return
-
-        cursor = self.connection.cursor()
-        self.collect_stats(cursor)
-        cursor.close()
-        self.connection.close()
-        self.add_stats()
-        self.finish()
+                self.logger.error('Could not connect to %s, skipping stats run: %s' %
+                                  (self.__class__.__name__, err))
+        finally:
+            self.finish()
 
     def finish(self):
         """Note the end of the stat collection run and let the user know of any
         errors.
 
         """
+        sev = 'info'
+        desc = 'successful'
+        col = 0
         if not self.derive_values and not self.gauge_values:
-            self.error_message()
+            sev = 'error'
+            desc = 'unsuccessful'
         else:
-            dur = time.time() - self.poll_start_time
-            LOGGER.info('%s poll successful',
-                        self.__class__.__name__,
-                        extra={"target_name": self.config['name'],
-                               "hostname": self.config['host'],
-                               "duration": "%.3f" % dur,
-                               "collected": len(self.derive_values) + len(self.gauge_values)})
+            col = len(self.derive_values) + len(self.gauge_values)
+
+        dur = time.time() - self.poll_start_time
+        getattr(self.logger, sev)('%s poll %s' % (self.__class__.__name__, desc),
+                                  extra={"duration": "%.3f" % dur, "collected": col})

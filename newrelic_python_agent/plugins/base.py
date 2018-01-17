@@ -14,6 +14,26 @@ import urlparse
 LOGGER = logging.getLogger(__name__)
 
 
+class PluginLogger(logging.LoggerAdapter):
+    """
+    This provides an easy mechanism to always log certain fields in
+    the `extra` kwargs passed to LOGGER.  Initialize this in your
+    plugin so it gets the correct LOGGER reference like:
+
+        self.logger = base.PluginLogger(LOGGER, dict(key1='value1', key2='value2'))
+
+    and then use it just like LOGGER.  We use this instead of LoggerAdapter directly
+    because LoggerAdapter by default will override any `extra` kwarg passed, where this
+    will simply update any `extra` kwarg passed in with the values initialize here.
+    """
+    def process(self, msg, kwargs):
+        if 'extra' not in kwargs:
+            kwargs['extra'] = {}
+        kwargs['extra'].update(self.extra)
+        # and return the updated args
+        return msg, kwargs
+
+
 class ConfigPlugin(object):
     """This plugin type is for dynamically generating application config data.
     These will be run alongside the metric collection plugins as a separate thread
