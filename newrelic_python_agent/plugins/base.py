@@ -100,7 +100,7 @@ class Plugin(object):
         """
         raise NotImplementedError
 
-    def add_derive_value(self, metric_name, units, value, count=None):
+    def add_derive_value(self, metric_name, units, value, count=None, rate=False):
         """Add a value that will derive the current value from the difference
         between the last interval value and the current value.
 
@@ -112,6 +112,7 @@ class Plugin(object):
         :param str units: The unit type
         :param int value: The value to add
         :param int count: The number of items the timing is for
+        :param bool rate: Calculate value as rate since last value (/sec)
 
         """
         if value is None:
@@ -121,12 +122,23 @@ class Plugin(object):
             LOGGER.debug('Bypassing initial %s value for first run', metric)
             self.derive_values[metric] = self.metric_payload(0, count=0)
         else:
-            cval = value - self.derive_last_interval[metric]
-            self.derive_values[metric] = self.metric_payload(cval, count=count)
-            LOGGER.debug('%s: Last: %r, Current: %r, Reporting: %r',
-                         metric, self.derive_last_interval[metric], value,
-                         self.derive_values[metric])
-        self.derive_last_interval[metric] = value
+            pvalue, ptimestamp = self.derive_last_interval[metric]
+            cval = value - pvalue
+            if rate:
+                duration = time.time() - ptimestamp
+                if duration > 0:
+                    cval = cval / duration
+                else:
+                    LOGGER.debug('Duration for %s metric is not at least 1 second.', metric)
+                    cval = None
+
+            if cval is not None:
+                self.derive_values[metric] = self.metric_payload(cval, count=count)
+                LOGGER.debug('%s: Last: %r, Current: %r, Reporting: %r',
+                             metric, self.derive_last_interval[metric][0], value,
+                             self.derive_values[metric])
+        # store the value and the current timestamp
+        self.derive_last_interval[metric] = [value, time.time()]
 
     def add_derive_timing_value(self, metric_name, units, count, total_value,
                                 last_value=None):
@@ -166,7 +178,7 @@ class Plugin(object):
                                                         max_val,
                                                         count,
                                                         sum_of_squares)
-        LOGGER.debug('%s: %r', metric_name, self.gauge_values[metric])
+        LOGGER.debug('%s: %r', metric, self.gauge_values[metric])
 
     def component_data(self):
         """Create the component section of the NewRelic Platform data payload
