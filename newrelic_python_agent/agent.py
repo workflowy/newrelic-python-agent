@@ -12,8 +12,12 @@ import socket
 import sys
 import threading
 import time
-import StringIO
 import gzip
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 from newrelic_python_agent import __version__
 from newrelic_python_agent import plugins
@@ -351,7 +355,7 @@ class NewRelicPythonAgent(helper.Controller):
         body = {'agent': self.agent_data, 'components': components}
         LOGGER.debug(body)
 
-        s = StringIO.StringIO()
+        s = StringIO()
         g = gzip.GzipFile(fileobj=s, mode='w')
         g.write(json.dumps(body, ensure_ascii=False))
         g.close()
