@@ -17,9 +17,23 @@ Some settings can be overridden by environment variables:
     CLOUDFORMATION_HOSTED_ZONE_EXPORT_NAME
         overrides `cloudformation_hosted_zone_export_name` in all region-specific settings
 
+    AWS_ACCOUNT_NAME
+        overrides `aws_account_name` setting.
+
+    AWS_ACCOUNT_ID
+        overrides `aws_account_id` setting.
+
 The following settings are supported:
 
     `name`: A descriptive name of this config block
+    `newrelic_name_format`: A format string for generating the newrelic name.
+                            {account_name} specifies the `aws_account_name` setting.
+                            {account_id} specifies the `aws_account_id` setting.
+                            {account} will use `{account_name}` if defined, otherwise `{account_id}`
+                            {dbname} refers to the DBInstanceIdentifier property of the RDS instance.
+                            {region} is the region where the instance resides.
+        type: string
+        default: '{dbname} ({account}:{region})'
     `target_plugin_name`: The application name that the resulting config block should be assigned to.
                           If you have a static 'mysql' block already configured, you might want the
                           dynamic one generated here assigned as 'mysql:RDS' instead.
@@ -28,6 +42,14 @@ The following settings are supported:
     `refresh_interval`: How often this module should run (seconds)
         type: integer
         default: 0 (run every time)
+    `aws_account_name`: The name of the AWS account.  Used by `newrelic_name_format`.
+        type: string
+        env: `AWS_ACCOUNT_NAME` takes precedence.
+        default: None
+    `aws_account_id`: The AWS account ID.  Used by `newrelic_name_format`.
+        type: string
+        env: `AWS_ACCOUNT_ID` takes precedence.
+        default: Query the EC2 metadata
     `regions`: The list of regions to query for RDS instances
         type: comma, space, colon, semi-colon separated string or list of region names
         env: `RDS_REGIONS` environment variable takes precedence over any config entries
@@ -183,6 +205,9 @@ LOGGER = logging.getLogger(__name__)
 class MySQLConfig(base.ConfigPlugin):
 
     # region settings that we handle.  Any other keys will be passed through directly.
+    # these are under either the settings.$region or settings.default configs
+
+    DEFAULT_NAME_FORMAT = '{dbname} ({account}:{region})'
     SETTINGS_KEYS = ['user', 'password', 'include', 'exclude', 'host', 'name', 'domain',
                      'cloudformation_hosted_zone_export_name', 'region', 'credstash_table',
                      'credstash_user_key', 'credstash_password_key']
@@ -190,16 +215,32 @@ class MySQLConfig(base.ConfigPlugin):
     def initialize(self):
         """Initialize ourselves, preparing the required variables."""
 
+        self.init_vars()
+        self.init_from_env()
+        self.init_verify_vars()
+        self.init_defaults()
+
+    def init_vars(self):
         self.rds_cache = dict()
         self.creds_cache = dict()
         self.exports_cache = dict()
         self.tags_cache = dict()
 
-        # This overrides any config values, if defined.
+    def init_from_env(self):
+        # This requires some manipulation, so handled separately.
         r = self.get_region_from_environment()
         if r:
+            LOGGER.info('using regions from environment: %s' % r)
             self.config['regions'] = r
 
+        # these are supported straight overrides
+        for i in ['aws_account_id', 'aws_account_name']:
+            r = os.getenv(i.upper())
+            if r:
+                LOGGER.info('using %s from environment: %s' % (i, r))
+                self.config[i] = r
+
+    def init_verify_vars(self):
         # we expect/want these to be lists, but support
         # a single string (with comma separated items) for convenience
         # or just a single dict (for targets)
@@ -210,9 +251,27 @@ class MySQLConfig(base.ConfigPlugin):
                 elif isinstance(self.config[prop], dict):
                     self.config[prop] = [self.config[prop]]
 
+        if 'newrelic_name_format' in self.config:
+            # make sure this is valid and doesn't cause an exception
+            try:
+                self.format_newrelic_name('testname', 'testregion')
+            except KeyError as e:
+                raise Exception("newrelic_name_format is invalid! invalid key %s specified!" % e)
+
+    def init_defaults(self):
         # default to only the current region if none are specified.
         if 'regions' not in self.config:
+            LOGGER.info('setting regions to default')
             self.config['regions'] = self.get_default_region()
+
+        # default account name is the accountid in the EC2 data
+        if 'aws_account_id' not in self.config:
+            LOGGER.info('setting aws_account_id to default')
+            self.config['aws_account_id'] = self.get_value_from_metadata('accountId')
+
+        if 'newrelic_name_format' not in self.config:
+            LOGGER.info('setting newrelic_name_format to default')
+            self.config['newrelic_name_format'] = self.DEFAULT_NAME_FORMAT
 
     def get_default_region(self):
         """
@@ -235,6 +294,23 @@ class MySQLConfig(base.ConfigPlugin):
         if r:
             return self.string_to_list(r)
 
+    def get_value_from_metadata(self, value):
+        """
+        Query the EC2 metadata for the local region.
+
+        :param str value: The name of the value to return
+        :return: The AWS region the EC2 instance is running.
+        :rtype: str or None
+        """
+        LOGGER.info('Obtaining %s from EC2 metadata.' % value)
+        try:
+            url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
+            document = json.loads(urllib2.urlopen(url, timeout=3).read())
+            return [document[value]]
+        except urllib2.URLError as e:
+            LOGGER.warning("failed to query EC2 metadata: %s", e)
+            pass
+
     def get_region_from_metadata(self):
         """
         Query the EC2 metadata for the local region.
@@ -242,14 +318,7 @@ class MySQLConfig(base.ConfigPlugin):
         :return: The AWS region the EC2 instance is running.
         :rtype: str or None
         """
-        LOGGER.info('Obtaining region from EC2 metadata.')
-        try:
-            url = 'http://169.254.169.254/latest/dynamic/instance-identity/document'
-            document = json.loads(urllib2.urlopen(url, timeout=3).read())
-            return [document['region']]
-        except urllib2.URLError as e:
-            LOGGER.warning("failed to query EC2 metadata: %s", e)
-            pass
+        return self.get_value_from_metadata('region')
 
     def get_region_from_session(self):
         """
@@ -285,10 +354,15 @@ class MySQLConfig(base.ConfigPlugin):
             LOGGER.error("must specify 'target_plugin_name' config value")
             return
 
-        LOGGER.info("building config for '%s'", plugin)
-        self.initialize()
+        try:
+            LOGGER.info("initializing '%s'", plugin)
+            self.initialize()
+        except Exception as e:
+            LOGGER.error(e)
+            return
 
         try:
+            LOGGER.info("building config for '%s'", plugin)
             instances = self.get_all_rds_instances()
             instances.extend(self.get_manual_instances())
             LOGGER.info("found %s database instances to monitor", len(instances))
@@ -538,16 +612,13 @@ class MySQLConfig(base.ConfigPlugin):
                 if instance['Engine'] == "mysql":
                     # include by default
                     good = True
-                    name = instance['DBInstanceIdentifier']
                     endpoint = instance['Endpoint']['Address']
 
-                    # if include and not (re.search(include, name) or re.search(include, endpoint)):
                     if include and not self.is_match(c, instance, include):
                         LOGGER.debug("excluding '%s' because it did not match include pattern of '%s'",
                                      endpoint, self.format_pattern(include))
                         good = False
 
-                    # if good and exclude and (re.search(exclude, name) or re.search(exclude, endpoint)):
                     if good and exclude and self.is_match(c, instance, exclude):
                         LOGGER.debug("excluding '%s' because it matches exclude pattern of '%s'",
                                      endpoint, self.format_pattern(exclude))
@@ -556,7 +627,7 @@ class MySQLConfig(base.ConfigPlugin):
                     if good:
                         # create a stub instance
                         i = {
-                            'name': "%s (%s)" % (name, region),
+                            'name': self.format_newrelic_name(instance['DBInstanceIdentifier'], region),
                             'host': endpoint,
                         }
 
@@ -684,6 +755,18 @@ class MySQLConfig(base.ConfigPlugin):
                 p = "(%s)" % " AND ".join(ands)
             ors.append(str(p))
         return " OR ".join(ors)
+
+    def format_newrelic_name(self, name, region):
+        f = self.get_config_value('newrelic_name_format')
+        account_id = self.get_config_value('aws_account_id') or ''
+        account_name = self.get_config_value('aws_account_name') or ''
+        account = account_name or account_id
+        desc = f.format(dbname=name,
+                        account_id=account_id,
+                        account_name=account_name,
+                        account=account,
+                        region=region)
+        return desc
 
     def get_manual_instances(self):
         """
