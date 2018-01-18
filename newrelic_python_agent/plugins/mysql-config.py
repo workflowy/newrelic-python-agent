@@ -815,7 +815,7 @@ class MySQLConfig(base.ConfigPlugin):
 
                 # now build the instance config
                 cf = {
-                    'name': "%s (manual)" % name,
+                    'name': self.format_newrelic_name("%s (manual)" % name, ''),
                     'host': target.get('host', self.get_fqdn(name, region)),
                 }
                 # only include these if they are defined
