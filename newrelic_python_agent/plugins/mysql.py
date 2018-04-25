@@ -396,7 +396,7 @@ META = {
             ["relay_log_pos", "Bytes"]
         ],
         "newrelic": [
-            ["bytes_read", "Bytes"],
+            ["bytes_reads", "Bytes"],
             ["bytes_writes", "Bytes"],
             ["innodb_bp_pages_created", "Pages"],
             ["innodb_bp_pages_read", "Pages"],
