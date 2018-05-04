@@ -149,7 +149,7 @@ class Plugin(object):
                 if duration > 0:
                     cval = cval / duration
                 else:
-                    LOGGER.debug('Duration for %s metric is not at least 1 second.', metric)
+                    LOGGER.warning('Duration (%s) for %s metric is not at least 1 second.', duration, metric)
                     cval = None
 
             if cval is not None:

@@ -316,6 +316,8 @@ class NewRelicPythonAgent(helper.Controller):
         while self.publish_queue.qsize():
             (name, data, last_values) = self.publish_queue.get()
             self.derive_last_interval[name] = last_values
+            if isinstance(data, dict):
+                data = [data]
             if isinstance(data, list):
                 for component in data:
                     self.process_min_max_values(component)
@@ -326,17 +328,9 @@ class NewRelicPythonAgent(helper.Controller):
                         components = list()
                         metrics = 0
 
-            elif isinstance(data, dict):
-                self.process_min_max_values(data)
-                components.append(data)
-                metrics += len(data['metrics'].keys())
-                if metrics >= self.MAX_METRICS_PER_REQUEST:
-                    self.send_components(components, metrics)
-                    components = list()
-                    metrics = 0
-
-        LOGGER.debug('Done, will send remainder of %i metrics', metrics)
-        self.send_components(components, metrics)
+        if metrics > 0:
+            LOGGER.debug('Done, will send remainder of %i metrics', metrics)
+            self.send_components(components, metrics)
 
     def send_components(self, components, metrics):
         """Create the headers and payload to send to NewRelic platform as a
