@@ -923,7 +923,7 @@ class MySQL(base.Plugin):
             # build stats
             self.add_stats()
         except ValueError as err:
-            self.logger.error(err)
+            self.logger.exception(err)
         except sql.Error as err:
             if _errno(err) == ER_ACCESS_DENIED_ERROR:
                 self.logger.error("Something is wrong with your user name or password")
