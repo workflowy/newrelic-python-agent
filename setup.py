@@ -12,7 +12,7 @@ data_files[base_path] = ['LICENSE',
                          'apc-nrp.php']
 
 console_scripts = ['newrelic-python-agent=newrelic_python_agent.agent:main']
-install_requires = ['helper>=2.2.2', 'requests>=2.0.0']
+install_requires = ['helper>=2.2.2', 'requests>=2.0.0', 'six>=1.5']
 tests_require = []
 extras_require = {'mongodb': ['pymongo'],
                   'pgbouncer': ['psycopg2'],

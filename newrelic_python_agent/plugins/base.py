@@ -10,6 +10,7 @@ import socket
 import tempfile
 import time
 import urlparse
+import six
 
 LOGGER = logging.getLogger(__name__)
 
@@ -275,7 +276,7 @@ class Plugin(object):
         if not value:
             value = 0
 
-        if isinstance(value, ("".__class__, u"".__class__)):
+        if isinstance(value, six.string_types):
             value = 0
 
         sum_of_squares = int(squares or (value * value))
