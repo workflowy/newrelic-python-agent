@@ -10,6 +10,7 @@ import socket
 import tempfile
 import time
 import urlparse
+import six
 
 LOGGER = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ class Plugin(object):
                 if duration > 0:
                     cval = cval / duration
                 else:
-                    LOGGER.debug('Duration for %s metric is not at least 1 second.', metric)
+                    LOGGER.warning('Duration (%.3f) for %s metric is not at least 1 second.', duration, metric)
                     cval = None
 
             if cval is not None:
@@ -275,7 +276,7 @@ class Plugin(object):
         if not value:
             value = 0
 
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             value = 0
 
         sum_of_squares = int(squares or (value * value))
