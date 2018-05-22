@@ -146,6 +146,7 @@ META = {
     "gauge": {
         "status": [
             "innodb_page_size",
+            "innodb_data_pending_fsyncs",
             "max_used_connections",
             "open_files",
             "open_streams",
@@ -352,7 +353,6 @@ META = {
             "innodb_buffer_pool_wait_free",
             "innodb_buffer_pool_write_requests",
             ["innodb_data_fsyncs", "Fsyncs"],
-            "innodb_data_pending_fsyncs",
             "innodb_data_read",
             "innodb_data_reads",
             "innodb_data_writes",
@@ -425,6 +425,25 @@ class MySQL(base.Plugin):
     is_null = re.compile("^null$", re.I)
     has_slave_data = False
     raw_metrics = dict()
+
+    #
+    # Track the server uuid just to verify who we are talking to.
+    #
+    # This was used to help debug some threading issues where connections were going
+    # to the wrong database instance.  Left it here, but unused, because it seemed useful.
+    #
+    def verify_uuid(self, cursor):
+        cursor.execute("show variables where variable_name like 'server%'")
+        server = self.parse_set_stats(cursor)
+        if 'server_uuid' in self.derive_last_interval.keys():
+            if server['server_uuid'] == self.derive_last_interval['server_uuid']:
+                self.logger.debug("server_uuid matches %s", server['server_uuid'])
+            else:
+                raise ValueError("server_uuid (%s) does not match previous value of %s" %
+                                 (server['server_uuid'], self.derive_last_interval['server_uuid']))
+        else:
+            self.derive_last_interval['server_uuid'] = server['server_uuid']
+            self.logger.info("server_uuid is %s", server['server_uuid'])
 
     def collect_stats(self, cursor):
         """
@@ -761,7 +780,7 @@ class MySQL(base.Plugin):
         :result: True if the value is a number type, False otherwise
         :rtype: bool
         """
-        if isinstance(value, (int, float, long, complex)):
+        if isinstance(value, (int, float, long, complex)):  # noqa
             return True
         return False
 
@@ -864,7 +883,9 @@ class MySQL(base.Plugin):
 
         """
 
+        self.logger.debug("creating DB connection")
         conn = sql.connect(**self.connection_arguments)
+        self.logger.debug("DB connection ready: %r", conn.get_host_info())
         return conn
 
     @property
@@ -875,7 +896,10 @@ class MySQL(base.Plugin):
             via double-splat
         """
         filtered_args = ['name', 'metrics']
-        args = DEFAULT_CONNECT_ARGS
+
+        # make sure we make a copy of this global so it is thread-safe
+        args = dict(DEFAULT_CONNECT_ARGS)
+
         for key in set(self.config) - set(filtered_args):
             if key == 'dbname':
                 args['database'] = self.config[key]
@@ -890,12 +914,16 @@ class MySQL(base.Plugin):
         self.initialize()
         self.raw_metrics = dict()
         try:
-            self.connection = self.connect()
-            cursor = self.connection.cursor()
-            self.collect_stats(cursor)
-            cursor.close()
-            self.connection.close()
+            # open a new connection
+            with self.connect() as cursor:
+                # self.verify_uuid(cursor)
+                # self.logger.debug("done verifying uuid")
+                self.collect_stats(cursor)
+                self.logger.debug("done collecting data")
+            # build stats
             self.add_stats()
+        except ValueError as err:
+            self.logger.exception(err)
         except sql.Error as err:
             if _errno(err) == ER_ACCESS_DENIED_ERROR:
                 self.logger.error("Something is wrong with your user name or password")
