@@ -20,6 +20,8 @@ class RabbitMQ(base.Plugin):
     DEFAULT_HOST = 'localhost'
     DEFAULT_PORT = 80
     DEFAULT_API_PATH = '/api'
+    # support standard requests timeout values: (connect, read) or single value for both
+    # http://docs.python-requests.org/en/master/user/advanced/#timeouts
     DEFAULT_TIMEOUT = (3.05, 30)
 
     DUMMY_STATS = {'ack': 0,
