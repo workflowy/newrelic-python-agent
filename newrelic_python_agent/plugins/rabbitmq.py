@@ -298,6 +298,9 @@ class RabbitMQ(base.Plugin):
             'verify': self.config.get('verify_ssl_cert', True),
             'timeout': self.config.get('timeout', self.DEFAULT_TIMEOUT)
         }
+        if isinstance(kwargs['timeout'], list):
+            # convert list to tuple form
+            kwargs['timeout'] = tuple(kwargs['timeout'])
         if params:
             kwargs['params'] = params
 
