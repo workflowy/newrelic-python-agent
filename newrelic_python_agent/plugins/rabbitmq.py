@@ -20,6 +20,9 @@ class RabbitMQ(base.Plugin):
     DEFAULT_HOST = 'localhost'
     DEFAULT_PORT = 80
     DEFAULT_API_PATH = '/api'
+    # support standard requests timeout values: (connect, read) or single value for both
+    # http://docs.python-requests.org/en/master/user/advanced/#timeouts
+    DEFAULT_TIMEOUT = (3.05, 30)
 
     DUMMY_STATS = {'ack': 0,
                    'deliver': 0,
@@ -221,8 +224,8 @@ class RabbitMQ(base.Plugin):
 
         """
         count = 0
-        available, consumers, deliver, publish, redeliver, unacked = \
-            0, 0, 0, 0, 0, 0
+        available, deliver, publish, redeliver, unacked = \
+            0, 0, 0, 0, 0
         for count, queue in enumerate(queue_data):
             if queue['name'][0:7] == 'amq.gen':
                 LOGGER.debug('Skipping auto-named queue: %s', queue['name'])
@@ -290,18 +293,23 @@ class RabbitMQ(base.Plugin):
         :param dict params: Get query string parameters
 
         """
-        kwargs = {'url': url,
-                  'auth': (self.config.get('username', self.DEFAULT_USER),
-                           self.config.get('password', self.DEFAULT_PASSWORD)),
-                  'verify': self.config.get('verify_ssl_cert', True)}
+        kwargs = {
+            'url': url,
+            'auth': (self.config.get('username', self.DEFAULT_USER),
+                     self.config.get('password', self.DEFAULT_PASSWORD)),
+            'verify': self.config.get('verify_ssl_cert', True),
+            'timeout': self.config.get('timeout', self.DEFAULT_TIMEOUT)
+        }
+        if isinstance(kwargs['timeout'], list):
+            # convert list to tuple form
+            kwargs['timeout'] = tuple(kwargs['timeout'])
         if params:
             kwargs['params'] = params
 
-        try:
-            return self.requests_session.get(**kwargs)
-        except requests.ConnectionError as error:
-            LOGGER.error('Error fetching data from %s: %s', url, error)
-            return None
+        s = time.time()
+        r = self.requests_session.get(**kwargs)
+        LOGGER.debug('%s took %.2f seconds', url, time.time() - s)
+        return r
 
     def fetch_data(self, data_type, columns=None):
         """Fetch the data from the RabbitMQ server for the specified data type
@@ -362,16 +370,24 @@ class RabbitMQ(base.Plugin):
         self.rate = dict()
         self.consumers = 0
 
-        # Fetch the data from RabbitMQ
-        channel_data = self.fetch_channel_data()
-        node_data = self.fetch_node_data()
-        queue_data = self.fetch_queue_data()
+        try:
+            # Fetch the data from RabbitMQ
+            channel_data = self.fetch_channel_data()
+            node_data = self.fetch_node_data()
+            queue_data = self.fetch_queue_data()
 
-        # Create all of the metrics
-        self.add_queue_datapoints(queue_data)
-        self.add_node_datapoints(node_data, queue_data, channel_data)
-        LOGGER.info('Polling complete in %.2f seconds',
-                    time.time() - start_time)
+            # Create all of the metrics
+            self.add_queue_datapoints(queue_data)
+            self.add_node_datapoints(node_data, queue_data, channel_data)
+            LOGGER.info('Polling complete in %.2f seconds',
+                        time.time() - start_time)
+
+        except requests.exceptions.RequestException as error:
+            LOGGER.error('Polling failed after %.2f seconds',
+                         time.time() - start_time, extra={"error": error})
+        except Exception:
+            LOGGER.exception('Polling failed after %.2f seconds',
+                             time.time() - start_time)
 
     @property
     def rabbitmq_base_url(self):
