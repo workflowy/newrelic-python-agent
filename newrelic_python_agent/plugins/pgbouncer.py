@@ -37,13 +37,21 @@ class PgBouncer(postgresql.PostgreSQL):
             metric = 'Database/%s' % database['database']
             self.add_derive_value('%s/Query Time' % metric, 'seconds',
                                   database['total_query_time'])
-            self.add_derive_value('%s/Requests' % metric, 'requests',
-                                  database['total_requests'])
+
+            # Handle breaking changes in pgbouncer >=1.8
+            if 'total_requests' in database:
+                self.add_derive_value('%s/Requests' % metric, 'requests',
+                                          database['total_requests'])
+                requests += database['total_requests']
+            elif 'total_query_count' in database: # new metric name as of 1.8
+                self.add_derive_value('%s/Requests' % metric, 'requests',
+                                          database['total_query_count'])
+                requests += database['total_query_count']
+
             self.add_derive_value('%s/Data Sent' % metric, 'bytes',
                                   database['total_sent'])
             self.add_derive_value('%s/Data Received' % metric, 'bytes',
                                   database['total_received'])
-            requests += database['total_requests']
 
         self.add_derive_value('Overview/Requests', 'requests', requests)
 
