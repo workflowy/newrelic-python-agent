@@ -45,7 +45,8 @@ class NewRelicPythonAgent(helper.Controller):
     IGNORE_KEYS = ['license_key', 'proxy', 'endpoint', 'verify_ssl_cert',
                    'poll_interval', 'wake_interval', 'newrelic_api_timeout', 'skip_newrelic_upload']
 
-    MAX_METRICS_PER_REQUEST = 10000
+    MAX_SIZE_PER_REQUEST = 750*1024   # behavior is undetermined if POST is larger than 1MB, so max at 750KB
+    MAX_METRICS_PER_REQUEST = 10000   # limit is 20,000 per POST
     PLATFORM_URL = 'https://platform-api.newrelic.com/platform/v1/metrics'
     WAKE_INTERVAL = 60
 
@@ -311,6 +312,7 @@ class NewRelicPythonAgent(helper.Controller):
 
     def send_data_to_newrelic(self):
         """Process the queue of metric plugin results"""
+        size = 0
         metrics = 0
         components = list()
         while self.publish_queue.qsize():
@@ -322,11 +324,14 @@ class NewRelicPythonAgent(helper.Controller):
                 for component in data:
                     self.process_min_max_values(component)
                     components.append(component)
+                    # track a rough approximation of payload size
+                    size += len(json.dumps(component, ensure_ascii=False))
                     metrics += len(component['metrics'].keys())
-                    if metrics >= self.MAX_METRICS_PER_REQUEST:
+                    if metrics >= self.MAX_METRICS_PER_REQUEST or size >= self.MAX_SIZE_PER_REQUEST:
                         self.send_components(components, metrics)
                         components = list()
                         metrics = 0
+                        size = 0
 
         if metrics > 0:
             LOGGER.debug('Done, will send remainder of %i metrics', metrics)
@@ -341,13 +346,7 @@ class NewRelicPythonAgent(helper.Controller):
             LOGGER.warning('No metrics to send to NewRelic this interval')
             return
 
-        if self.config.application.get('skip_newrelic_upload'):
-            LOGGER.info('Not sending %i metrics to NewRelic', metrics)
-            return
-
-        LOGGER.info('Sending %i metrics to NewRelic', metrics)
         body = {'agent': self.agent_data, 'components': components}
-        LOGGER.debug(body)
 
         s = StringIO()
         g = gzip.GzipFile(fileobj=s, mode='w')
@@ -356,8 +355,16 @@ class NewRelicPythonAgent(helper.Controller):
         gzipped_body = s.getvalue()
         request_body = gzipped_body
 
-        LOGGER.debug('POST data size before compression: %i bytes', len(json.dumps(body, ensure_ascii=False)))
-        LOGGER.debug('POST data size after compression: %i bytes', len(request_body))
+        LOGGER.info('%sSending %i metrics for %i components to NewRelic (%i bytes compressed to %i bytes)',
+                    "NOT " if self.config.application.get('skip_newrelic_upload') else "",
+                    metrics,
+                    len(components),
+                    len(json.dumps(body, ensure_ascii=False)),
+                    len(request_body))
+        LOGGER.debug(body)
+
+        if self.config.application.get('skip_newrelic_upload'):
+            return
 
         try:
             response = requests.post(self.endpoint,
@@ -367,9 +374,9 @@ class NewRelicPythonAgent(helper.Controller):
                                      timeout=self.config.application.get('newrelic_api_timeout', 10),
                                      verify=self.config.application.get('verify_ssl_cert', True))
 
-            LOGGER.debug('Response: %s: %r',
-                         response.status_code,
-                         response.content.strip())
+            LOGGER.info('Response: %s: %r',
+                        response.status_code,
+                        response.content.strip())
         except requests.ConnectionError as error:
             LOGGER.error('Error reporting stats: %s', error)
         except requests.Timeout as error:
