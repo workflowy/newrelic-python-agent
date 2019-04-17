@@ -103,4 +103,5 @@ class PgBouncer(postgresql.PostgreSQL):
               "user='%(user)s'" % self.config
         if self.config.get('password'):
             dsn += " password='%s'" % self.config['password']
+        self.config['database'] = 'pgbouncer'
         return dsn
